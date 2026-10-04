@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { BASE, SITE, href } from '../lib/config';
+import { getVault } from '../lib/vault/vault';
 
 interface Props {
   title?: string;
@@ -17,7 +18,8 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
   { key: 'research', label: 'Research', url: href('research') },
   { key: 'ideas', label: 'Ideas', url: href('ideas') },
   { key: 'tags', label: 'Topics', url: href('tags') },
-  { key: 'about', label: 'About', url: href('about') },
+  // About is a vault note (About.md); only link it when it exists.
+  ...(getVault().bySlug.has('about') ? [{ key: 'about' as const, label: 'About', url: href('about') }] : []),
 ];
 ---
 

@@ -3,7 +3,7 @@ import { toString } from 'mdast-util-to-string';
 import GithubSlugger from 'github-slugger';
 import { visit } from 'unist-util-visit';
 import { href } from '../config';
-import { INLINE_TAG, parseWikiInner, tagSlug } from '../vault/parse';
+import { ATTACHMENT, INLINE_TAG, headingKey, parseWikiInner, tagSlug } from '../vault/parse';
 import type { Asset, Note } from '../vault/types';
 import type { Vault } from '../vault/vault';
 import { hNode, mergeText, replaceInText, text } from './util';
@@ -26,12 +26,11 @@ const IMAGE = /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i;
 const VIDEO = /\.(mp4|webm|mov|ogv)$/i;
 const AUDIO = /\.(mp3|wav|ogg|m4a|flac)$/i;
 const PDF = /\.pdf$/i;
-const HAS_EXT = /\.[a-z0-9]{2,5}$/i;
 const EXTERNAL = /^([a-z][a-z0-9+.-]*:|\/\/|#)/i;
 
 export function headingAnchor(target: Note, heading: string): string {
-  const want = heading.trim().toLowerCase();
-  const hit = target.headings.find((h) => h.text.toLowerCase() === want || h.id === want);
+  const want = headingKey(heading);
+  const hit = target.headings.find((h) => headingKey(h.text) === want || h.id === heading.trim().toLowerCase());
   return hit?.id ?? new GithubSlugger().slug(heading);
 }
 
@@ -129,7 +128,7 @@ export function remarkObsidian(ctx: RenderContext) {
       const m = /^\s*!\[\[([^[\]\n]+?)\]\]\s*$/.exec(p.children[0].value);
       if (!m) return;
       const link = parseWikiInner(m[1]);
-      if (HAS_EXT.test(link.target) && !/\.md$/i.test(link.target)) return; // attachment: handled inline
+      if (ATTACHMENT.test(link.target)) return; // attachment: handled inline
       const target = vault.resolveNote(link.target, note);
       if (!target) return;
       parent.children[index] = noteEmbed(ctx, target, link.heading, link.block, link.alias) as any;
@@ -139,7 +138,7 @@ export function remarkObsidian(ctx: RenderContext) {
     replaceInText(tree, /(!?)\[\[([^[\]\n]+?)\]\]/, (m) => {
       const embed = m[1] === '!';
       const link = parseWikiInner(m[2]);
-      if (embed || (HAS_EXT.test(link.target) && !/\.md$/i.test(link.target))) {
+      if (embed || ATTACHMENT.test(link.target)) {
         const asset = vault.resolveAsset(link.target, note);
         if (asset) return embed ? assetNode(asset, link.alias) : { type: 'link', url: asset.url, children: [text(link.alias ?? asset.name)] };
       }
@@ -178,7 +177,7 @@ export function remarkObsidian(ctx: RenderContext) {
         const l = n as Link;
         if (EXTERNAL.test(l.url) || l.url.startsWith('/')) return;
         const [path, frag] = decodeURI(l.url).split('#');
-        const target = !HAS_EXT.test(path) || /\.md$/i.test(path) ? vault.resolveNote(path, note) : undefined;
+        const target = !ATTACHMENT.test(path) ? vault.resolveNote(path, note) : undefined;
         if (target) l.url = noteHref(target, frag);
         else {
           const asset = vault.resolveAsset(path, note);

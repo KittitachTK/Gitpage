@@ -26,7 +26,13 @@ const rendered = await renderNote(note, vault);
 // The page header already shows the title: drop a leading `# Title` that repeats it.
 const firstH1 = note.headings[0]?.depth === 1 && note.headings[0].text === note.title;
 const html = firstH1 ? rendered.html.replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>/, '') : rendered.html;
-const toc = note.headings.filter((h) => h.depth === 2 || h.depth === 3);
+// Many notes use `#` for major parts after the title, so the TOC starts at the
+// shallowest heading level present (excluding the title H1) and shows two levels.
+const tocHeadings = firstH1 ? note.headings.slice(1) : note.headings;
+const top = Math.min(6, ...tocHeadings.map((h) => h.depth));
+const toc = tocHeadings
+  .filter((h) => h.depth === top || h.depth === top + 1)
+  .map((h) => ({ ...h, depth: h.depth - top + 2 }));
 
 const backlinks = vault.backlinks(note);
 const sectionNotes = note.folders.length ? vault.notes.filter((n) => n.section === note.section) : [];

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { RESERVED_PREFIXES, RESERVED_ROUTES, STATUSES } from '../config';
-import { maskNonProse } from './parse';
+import { ATTACHMENT, headingKey, maskNonProse } from './parse';
 import type { Note } from './types';
 import type { Vault } from './vault';
 
@@ -37,7 +37,6 @@ function suggest(target: string, candidates: string[], n = 3): string[] {
     .map(({ c }) => c);
 }
 
-const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|avif|bmp|mp4|webm|mov|mp3|wav|ogg|m4a|pdf)$/i;
 
 /** Every check from the plan's "Automatic Validation" section. */
 export function validateVault(vault: Vault): Issue[] {
@@ -73,7 +72,7 @@ export function validateVault(vault: Vault): Issue[] {
   for (const n of vault.notes) {
     // Wikilinks and embeds.
     for (const l of n.links) {
-      const isFile = IMAGE_EXT.test(l.target) || (/\.[a-z0-9]{2,5}$/i.test(l.target) && !/\.md$/i.test(l.target));
+      const isFile = ATTACHMENT.test(l.target);
       if (isFile) {
         if (!vault.resolveAsset(l.target, n)) {
           issues.push({
@@ -94,7 +93,7 @@ export function validateVault(vault: Vault): Issue[] {
             ...suggest(l.target, noteNames),
           ].map((s) => `[[${s}]]`),
         });
-      } else if (l.heading && !target.headings.some((h) => h.text.toLowerCase() === l.heading!.toLowerCase())) {
+      } else if (l.heading && !target.headings.some((h) => headingKey(h.text) === headingKey(l.heading!))) {
         issues.push({
           level: 'warning', rule: 'missing-heading', file: rel(n), line: l.line,
           message: `Heading "${l.heading}" not found in ${rel(target)}`,

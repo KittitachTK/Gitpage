@@ -188,7 +188,8 @@ export function loadVault(root = VAULT_DIR): Vault {
 
   const resolveNote = (target: string, from?: Note): Note | undefined => {
     if (!target) return from; // [[#Heading]] links to the current note
-    const t = stripExt(target.replace(/\\/g, '/').replace(/^\/+/, '')).toLowerCase();
+    // Only `.md` is an extension here: note names may contain dots ("บทที่ 6.2-8 …").
+    const t = target.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\.md$/i, '').toLowerCase();
     if (byId.has(t)) return byId.get(t);
     if (t.includes('/')) {
       if (from) {

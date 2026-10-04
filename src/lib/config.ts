@@ -68,6 +68,8 @@ export const CALLOUTS: Record<string, { label: string; family: string }> = {
   conjecture: { label: 'Conjecture', family: 'conjecture' },
   remark: { label: 'Remark', family: 'quote' },
   exercise: { label: 'Exercise', family: 'example' },
+  solution: { label: 'Solution', family: 'success' },
+  answer: { label: 'Answer', family: 'success' },
 };
 
 /**

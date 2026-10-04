@@ -15,6 +15,20 @@ export function tagSlug(tag: string): string {
 
 const WIKILINK = /(!?)\[\[([^[\]\n]+?)\]\]/g;
 
+/**
+ * Extensions that mark a link target as an attachment. Anything else is a note
+ * name — note names may contain dots ("บทที่ 6.2-8 …", "Lecture 1.10").
+ */
+export const ATTACHMENT = /\.(png|jpe?g|gif|webp|svg|avif|bmp|mp4|webm|mov|ogv|mp3|wav|ogg|m4a|flac|pdf|canvas|csv|xlsx?|docx?|pptx?|zip|ipynb|py|txt|json)$/i;
+
+/**
+ * Comparison key for heading links. Obsidian writes `:`, `#`, `|`, `^`, `\`
+ * in a linked heading as spaces, and matches ignoring case and spacing.
+ */
+export function headingKey(s: string): string {
+  return stripInline(s).replace(/[:#|^\\]|%%/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 /** Split the inside of `[[…]]` into target / heading / block / alias. */
 export function parseWikiInner(inner: string): Omit<WikiLink, 'raw' | 'embed' | 'line'> {
   // `\|` is how Obsidian escapes the alias pipe inside tables.
@@ -132,7 +146,9 @@ export function makeExcerpt(body: string, max = 220): string {
     .replace(/\$\$[\s\S]*?\$\$/g, '')
     .split(/\n\s*\n/)
     .map((p) => p.trim())
-    .filter((p) => p && !/^(#|>|\||!\[|---|- |\* |\d+\. )/.test(p));
+    .filter((p) => p && !/^(#|>|\||!\[|---|- |\* |\d+\. )/.test(p))
+    // Excerpts are plain text, so raw TeX would show as `$T:V\to W$`: prefer prose.
+    .filter((p) => !p.includes('$'));
   const text = stripInline((paragraphs[0] ?? '').replace(/\n/g, ' '));
   return text.length > max ? text.slice(0, max).replace(/\s+\S*$/, '') + '…' : text;
 }
