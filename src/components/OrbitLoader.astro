@@ -1,0 +1,19 @@
+---
+/** Planet-and-moon loading indicator (adapted from Uiverse.io; styles in global.css). */
+interface Props {
+  label?: string;
+  class?: string;
+  hidden?: boolean;
+}
+const { label = 'Loading', class: className, hidden } = Astro.props;
+---
+
+<div class:list={['loading-state', className]} role="status" hidden={hidden}>
+  <svg class="orbit-loader" viewBox="0 0 100 100" aria-hidden="true">
+    <ellipse class="ring" cx="50" cy="50" rx="37" ry="5" transform="rotate(-45 50 50)"></ellipse>
+    <circle class="moon moon-back" cx="50" cy="50" r="5.5"></circle>
+    <circle class="planet" cx="50" cy="50" r="17"></circle>
+    <circle class="moon moon-front" cx="50" cy="50" r="5.5"></circle>
+  </svg>
+  <span>{label}</span>
+</div>

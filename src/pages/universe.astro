@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import OrbitLoader from '../components/OrbitLoader.astro';
 import { sectionColor, sections } from '../lib/site';
 import { getVault } from '../lib/vault/vault';
 
@@ -10,6 +11,7 @@ const secs = sections(vault).filter((s) => s.notes.length);
 <BaseLayout title="Knowledge Universe" nav="universe" description="Every note as a star, every link as a connection.">
   <section class="universe space">
     <canvas class="universe-canvas" aria-label="Interactive graph of all notes and their links"></canvas>
+    <OrbitLoader class="u-loading" label="Charting the universe" />
 
     <div class="universe-ui panel">
       <p class="eyebrow">Knowledge universe</p>
@@ -40,6 +42,8 @@ const secs = sections(vault).filter((s) => s.notes.length);
   .u-filter { width: 100%; background: var(--bg); border: 1px solid var(--border-strong); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; font: inherit; }
   .legend { list-style: none; padding: 0; margin: 14px 0 8px; display: grid; gap: 4px; color: var(--text-muted); }
   .u-hint { color: var(--text-faint); font-size: 0.75rem; margin: 10px 0 0; }
+  .universe :global(.u-loading) { position: absolute; inset: 0; justify-content: center; pointer-events: none; transition: opacity var(--dur-slow) var(--ease-out); }
+  .universe :global(.u-loading.done) { opacity: 0; }
   .u-hover { color: var(--text); margin: 8px 0 0; min-height: 1.4em; font-weight: 500; }
   @media (max-width: 640px) {
     .universe-ui { right: 16px; width: auto; top: auto; bottom: 16px; padding: 12px 14px; }
@@ -57,10 +61,13 @@ const secs = sections(vault).filter((s) => s.notes.length);
   const total = stats.textContent;
 
   const input = document.querySelector<HTMLInputElement>('#u-filter')!;
+  const loading = document.querySelector<HTMLElement>('.u-loading')!;
 
   fetch(`${base}graph.json`)
     .then((r) => r.json())
     .then((data) => {
+      loading.classList.add('done');
+      setTimeout(() => (loading.hidden = true), 600);
       const graph = mountGraph(canvas, data, {
         base,
         starfield: true,

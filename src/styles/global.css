@@ -612,3 +612,54 @@ html[data-vt='warp']::view-transition-new(root) { animation: warp-in 760ms var(-
 .results .p { display: block; font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-faint); margin-top: 2px; }
 .results .s { display: block; color: var(--text-muted); font-size: 0.92rem; margin-top: 6px; line-height: 1.55; }
 .results mark { background: var(--mark); color: var(--text); border-radius: 2px; }
+
+/* ---- adapted from Uiverse.io (MIT) ------------------------------------------
+   Recoloured with the theme tokens and toned down to fit the observatory look;
+   both stop animating with the rest of the site when motion is off. */
+
+/* Planet with a moon on a tilted orbit (loader by Charly-T). The moon is drawn
+   twice: behind the planet, and in front of it for the near half of the orbit. */
+.orbit-loader { display: block; width: 88px; height: 88px; overflow: visible; }
+.orbit-loader .ring { fill: none; stroke: var(--text-faint); stroke-opacity: 0.5; stroke-width: 1.2; stroke-dasharray: 2 4; }
+.orbit-loader .planet { fill: var(--panel-2); stroke: var(--accent); stroke-width: 2.5; }
+.orbit-loader .moon { fill: var(--accent); transform: translate(26px, -26px); }
+.orbit-loader .moon-back { animation: moon-orbit 3.6s ease-in-out infinite; }
+.orbit-loader .moon-front { opacity: 0; animation: moon-orbit 3.6s ease-in-out infinite, moon-near 3.6s linear infinite; }
+@keyframes moon-orbit {
+  0%, 100% { transform: translate(26px, -26px); }
+  50% { transform: translate(-26px, 26px); }
+}
+@keyframes moon-near { 0%, 49.9% { opacity: 0; } 50%, 100% { opacity: 1; } }
+
+.loading-state { display: flex; flex-direction: column; align-items: center; gap: 14px; color: var(--text-faint); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; }
+.loading-state[hidden] { display: none; }
+
+/* Galaxy button (by elijahgummer): on hover a small sky fades in behind the
+   label, its stars twinkle and a shooting star crosses it. */
+.btn.galaxy { transition: border-color var(--dur-base), background var(--dur-base), color var(--dur-base), box-shadow var(--dur-slow) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+.btn.galaxy .label { position: relative; }
+.btn.galaxy .sky { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
+.btn.galaxy .sky::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 2px; height: 2px; border-radius: 50%;
+  color: var(--accent);
+  box-shadow:
+    18px 9px, 46px 31px, 71px 12px, 97px 36px, 122px 7px, 148px 28px,
+    176px 14px, 203px 33px, 228px 10px, 34px 18px 0 -0.5px, 86px 24px 0 -0.5px,
+    137px 40px 0 -0.5px, 189px 22px 0 -0.5px, 241px 30px 0 -0.5px, 9px 34px 0 -0.5px;
+  animation: twinkle 2.4s ease-in-out infinite alternate;
+}
+.btn.galaxy .sky::after {
+  content: ''; position: absolute; top: 6px; left: 100%; width: 3.5em; height: 1px;
+  background: linear-gradient(90deg, var(--text), transparent);
+  rotate: -18deg; opacity: 0;
+}
+.btn.galaxy:is(:hover, :focus-visible) .sky { opacity: 1; }
+.btn.galaxy:is(:hover, :focus-visible) .sky::after { animation: shooting-star 3.2s var(--ease-in) 0.4s infinite; }
+.btn.galaxy:is(:hover, :focus-visible) { border-color: var(--accent); color: var(--text-strong); box-shadow: 0 0 28px -6px rgb(var(--accent-rgb) / 0.45), inset 0 0 18px rgb(var(--accent-rgb) / 0.08); }
+@keyframes twinkle { from { opacity: 0.35; } to { opacity: 1; } }
+@keyframes shooting-star {
+  0% { transform: translateX(0); opacity: 0; }
+  8% { opacity: 1; }
+  40% { transform: translate(-22em, 4.5em); opacity: 0; }
+  100% { transform: translate(-22em, 4.5em); opacity: 0; }
+}

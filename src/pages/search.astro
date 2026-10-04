@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import OrbitLoader from '../components/OrbitLoader.astro';
 ---
 
 <BaseLayout title="Search" nav="search">
@@ -13,10 +14,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <input id="search-page-input" class="big-search" type="search" placeholder="spectral gap" autocomplete="off" autofocus />
       </form>
     </header>
+    <OrbitLoader class="search-loading" label="Loading the index" hidden />
     <p class="eyebrow" id="search-status" aria-live="polite"></p>
     <ul class="results" id="search-results"></ul>
   </div>
 </BaseLayout>
+
+<style>
+  :global(.search-loading) { align-items: flex-start; margin: 8px 0 0; }
+</style>
 
 <script>
   import { escapeHtml, highlight, loadSearch, snippet } from '../scripts/search';
@@ -25,6 +31,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   const input = document.querySelector<HTMLInputElement>('#search-page-input')!;
   const list = document.querySelector<HTMLUListElement>('#search-results')!;
   const status = document.querySelector<HTMLElement>('#search-status')!;
+  const loading = document.querySelector<HTMLElement>('.search-loading')!;
 
   input.value = new URLSearchParams(location.search).get('q') ?? '';
 
@@ -39,7 +46,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       status.textContent = '';
       return;
     }
+    // Only the first search waits for the index; show the loader if that takes a moment.
+    const slow = setTimeout(() => (loading.hidden = false), 150);
     const engine = await loadSearch(base);
+    clearTimeout(slow);
+    loading.hidden = true;
     let hits = engine.search(q);
     if (!hits.length) hits = engine.search(q, { combineWith: 'OR' });
     status.textContent = `${hits.length} result${hits.length === 1 ? '' : 's'}`;
