@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { href } from '../../lib/config';
+import { sections } from '../../lib/site';
+import { getVault } from '../../lib/vault/vault';
+
+const secs = sections(getVault());
+---
+
+<BaseLayout title="Library" nav="library">
+  <div class="container">
+    <header class="page-head">
+      <p class="eyebrow">Knowledge library</p>
+      <h1>Library</h1>
+      <p>Every note in the archive, organised by field. Prefer to wander? Try the <a href={href('universe')}>Knowledge Universe</a>.</p>
+      <form action={href('search')} method="get" role="search" style="margin-top:24px">
+        <input class="big-search" name="q" type="search" placeholder="Search the archive…" aria-label="Search the archive" />
+      </form>
+    </header>
+    <div class="grid">
+      {
+        secs.map((s) => (
+          <a class="card" href={href(`library/${s.slug}`)}>
+            <span class="count">
+              <span class="section-dot" style={`--dot:${s.color}`} />
+              {s.notes.length} notes
+            </span>
+            <h3>{s.label}</h3>
+            <p>{s.blurb}</p>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+</BaseLayout>

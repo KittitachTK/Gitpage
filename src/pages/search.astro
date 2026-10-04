@@ -1,0 +1,67 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Search" nav="search">
+  <div class="container">
+    <header class="page-head">
+      <p class="eyebrow">Search the archive</p>
+      <h1>Search</h1>
+      <p>Titles, aliases, tags, headings and full text, including the TeX source of equations.</p>
+      <form role="search" style="margin-top:24px" onsubmit="return false">
+        <label class="sr-only" for="search-page-input">Search query</label>
+        <input id="search-page-input" class="big-search" type="search" placeholder="spectral gap" autocomplete="off" autofocus />
+      </form>
+    </header>
+    <p class="eyebrow" id="search-status" aria-live="polite"></p>
+    <ul class="results" id="search-results"></ul>
+  </div>
+</BaseLayout>
+
+<script>
+  import { escapeHtml, highlight, loadSearch, snippet } from '../scripts/search';
+
+  const base = document.documentElement.dataset.base!;
+  const input = document.querySelector<HTMLInputElement>('#search-page-input')!;
+  const list = document.querySelector<HTMLUListElement>('#search-results')!;
+  const status = document.querySelector<HTMLElement>('#search-status')!;
+
+  input.value = new URLSearchParams(location.search).get('q') ?? '';
+
+  async function run() {
+    const q = input.value.trim();
+    const url = new URL(location.href);
+    if (q) url.searchParams.set('q', q);
+    else url.searchParams.delete('q');
+    history.replaceState(null, '', url);
+    if (!q) {
+      list.innerHTML = '';
+      status.textContent = '';
+      return;
+    }
+    const engine = await loadSearch(base);
+    let hits = engine.search(q);
+    if (!hits.length) hits = engine.search(q, { combineWith: 'OR' });
+    status.textContent = `${hits.length} result${hits.length === 1 ? '' : 's'}`;
+    list.innerHTML = hits
+      .slice(0, 50)
+      .map(
+        (h) => `<li><a href="${base}${h.slug}">
+          <span class="t">${highlight(h.title, q)}</span>
+          <span class="p">${escapeHtml(h.path || 'Archive')}</span>
+          <span class="s">${highlight(snippet(h.text || h.excerpt, q), q)}</span>
+        </a></li>`,
+      )
+      .join('');
+  }
+
+  let timer: number | undefined;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = window.setTimeout(run, 120);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') list.querySelector('a')?.click();
+  });
+  run();
+</script>

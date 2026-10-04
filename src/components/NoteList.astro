@@ -1,0 +1,26 @@
+---
+import { crumbs, fmtDate, isoDate, noteUrl } from '../lib/site';
+import type { Note } from '../lib/vault/types';
+
+interface Props {
+  notes: Note[];
+  excerpt?: boolean;
+  date?: 'updated' | 'created' | false;
+}
+const { notes, excerpt = false, date = 'updated' } = Astro.props;
+---
+
+<ul class="note-list">
+  {
+    notes.map((n) => (
+      <li>
+        <a href={noteUrl(n)}>
+          <span class="t">{n.title}</span>
+          <span class="p">{crumbs(n).map((c) => c.label).join(' / ') || 'Archive'}</span>
+          {date && n[date] && <time class="d" datetime={isoDate(n[date])}>{fmtDate(n[date])}</time>}
+          {excerpt && n.excerpt && <span class="x">{n.excerpt}</span>}
+        </a>
+      </li>
+    ))
+  }
+</ul>

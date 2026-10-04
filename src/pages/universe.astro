@@ -1,0 +1,76 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { sectionColor, sections } from '../lib/site';
+import { getVault } from '../lib/vault/vault';
+
+const vault = getVault();
+const secs = sections(vault).filter((s) => s.notes.length);
+---
+
+<BaseLayout title="Knowledge Universe" nav="universe" description="Every note as a star, every link as a connection.">
+  <section class="universe">
+    <canvas class="universe-canvas" aria-label="Interactive graph of all notes and their links"></canvas>
+
+    <div class="universe-ui panel">
+      <p class="eyebrow">Knowledge universe</p>
+      <p class="u-stats">{vault.notes.length} stars · {vault.graph.links.length} connections</p>
+      <label class="sr-only" for="u-filter">Highlight notes</label>
+      <input id="u-filter" class="u-filter" type="search" placeholder="Highlight… (title or tag)" autocomplete="off" />
+      <ul class="legend">
+        {
+          secs.map((s) => (
+            <li>
+              <span class="section-dot" style={`--dot:${sectionColor(s.folder)}`} />
+              {s.label}
+            </li>
+          ))
+        }
+      </ul>
+      <p class="u-hint">Drag to pan · scroll or pinch to zoom · click a star to open it</p>
+      <p class="u-hover" aria-live="polite"></p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .universe { position: relative; height: calc(100dvh - var(--header-h)); background: radial-gradient(ellipse at 50% 45%, #0a1222 0%, var(--bg) 70%); }
+  .universe-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  .universe-ui { position: absolute; top: 16px; left: 16px; width: 260px; padding: 16px 18px; background: rgb(8 13 23 / 0.85); backdrop-filter: blur(8px); font-size: 0.85rem; }
+  .u-stats { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); margin: 6px 0 12px; }
+  .u-filter { width: 100%; background: var(--bg); border: 1px solid var(--border-strong); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; font: inherit; }
+  .legend { list-style: none; padding: 0; margin: 14px 0 8px; display: grid; gap: 4px; color: var(--text-muted); }
+  .u-hint { color: var(--text-faint); font-size: 0.75rem; margin: 10px 0 0; }
+  .u-hover { color: var(--text); margin: 8px 0 0; min-height: 1.4em; font-weight: 500; }
+  @media (max-width: 640px) {
+    .universe-ui { right: 16px; width: auto; top: auto; bottom: 16px; padding: 12px 14px; }
+    .legend, .u-hint { display: none; }
+  }
+</style>
+
+<script>
+  import { mountGraph } from '../scripts/graph';
+
+  const base = document.documentElement.dataset.base!;
+  const canvas = document.querySelector<HTMLCanvasElement>('.universe-canvas')!;
+  const hoverEl = document.querySelector<HTMLElement>('.u-hover')!;
+  const stats = document.querySelector<HTMLElement>('.u-stats')!;
+  const total = stats.textContent;
+
+  const input = document.querySelector<HTMLInputElement>('#u-filter')!;
+
+  fetch(`${base}graph.json`)
+    .then((r) => r.json())
+    .then((data) => {
+      const graph = mountGraph(canvas, data, {
+        base,
+        starfield: true,
+        galaxies: true,
+        labelDegree: 4,
+        onHover: (n) => (hoverEl.textContent = n ? n.title : ''),
+      });
+      input.addEventListener('input', () => {
+        const n = graph.setFilter(input.value);
+        stats.textContent = input.value.trim() ? `${n} matching stars` : total;
+      });
+    });
+</script>

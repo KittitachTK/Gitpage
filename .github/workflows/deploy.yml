@@ -1,0 +1,67 @@
+# Push to main → validate the vault → build → publish to GitHub Pages.
+#
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# For a project page (https://<user>.github.io/<repo>/) BASE_PATH is set from
+# the repo name automatically; for a <user>.github.io repo it becomes "/".
+
+name: Deploy archive
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history → accurate "Updated" dates from git
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate vault (links, images, metadata, …)
+        run: npm run validate
+
+      - name: Configure base path
+        id: pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Build site
+        run: npm run build
+        env:
+          SITE: ${{ steps.pages.outputs.origin || 'https://example.github.io' }}
+          BASE_PATH: ${{ steps.pages.outputs.base_path || '/' }}
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

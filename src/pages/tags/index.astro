@@ -1,0 +1,32 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { href } from '../../lib/config';
+import { getVault } from '../../lib/vault/vault';
+
+const tags = [...getVault().tags.entries()].sort((a, b) => b[1].notes.length - a[1].notes.length || a[1].name.localeCompare(b[1].name));
+const max = Math.max(1, ...tags.map(([, t]) => t.notes.length));
+---
+
+<BaseLayout title="Topics" nav="tags">
+  <div class="container">
+    <header class="page-head">
+      <p class="eyebrow">Topics</p>
+      <h1>Tags</h1>
+      <p>Clusters of notes sharing a <code>#tag</code>, from frontmatter or inline.</p>
+    </header>
+    <div class="cloud">
+      {
+        tags.map(([slug, t]) => (
+          <a class="tag-chip" href={href(`tags/${slug}`)} style={`font-size:${0.8 + (t.notes.length / max) * 0.5}rem`}>
+            #{t.name} <small>{t.notes.length}</small>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .cloud { max-width: 900px; }
+  .cloud small { color: var(--text-faint); margin-left: 4px; }
+</style>

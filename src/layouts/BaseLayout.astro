@@ -1,0 +1,88 @@
+---
+import '../styles/global.css';
+import { BASE, SITE, href } from '../lib/config';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Which top-level nav item is current. */
+  nav?: 'home' | 'universe' | 'library' | 'research' | 'ideas' | 'tags' | 'about' | 'search';
+}
+
+const { title, description = SITE.description, nav } = Astro.props;
+const pageTitle = title ? `${title} — ${SITE.name}` : `${SITE.name} · ${SITE.subtitle}`;
+const links: { key: Props['nav']; label: string; url: string }[] = [
+  { key: 'universe', label: 'Universe', url: href('universe') },
+  { key: 'library', label: 'Library', url: href('library') },
+  { key: 'research', label: 'Research', url: href('research') },
+  { key: 'ideas', label: 'Ideas', url: href('ideas') },
+  { key: 'tags', label: 'Topics', url: href('tags') },
+  { key: 'about', label: 'About', url: href('about') },
+];
+---
+
+<!doctype html>
+<html lang="en" data-base={BASE}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#02040a" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <link rel="icon" href={href('favicon.svg')} type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+    />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="sr-only" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href={href('')}><span class="star">✦</span>{SITE.name}<small>{SITE.subtitle}</small></a>
+        <nav class="nav" aria-label="Main">
+          {links.map((l) => <a href={l.url} aria-current={nav === l.key ? 'page' : undefined}>{l.label}</a>)}
+        </nav>
+        <form class="header-search" action={href('search')} method="get" role="search">
+          <label class="sr-only" for="q">Search the archive</label>
+          <input id="q" name="q" type="search" placeholder="Search the archive…  /" autocomplete="off" />
+        </form>
+        <button class="menu-toggle" type="button" aria-expanded="false">Menu</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <span>✦ {SITE.name} — {SITE.tagline}</span>
+        <span>Written in Obsidian · versioned with Git · built with Astro</span>
+      </div>
+    </footer>
+
+    <script>
+      const header = document.querySelector<HTMLElement>('.site-header')!;
+      const toggle = header.querySelector<HTMLButtonElement>('.menu-toggle')!;
+      toggle.addEventListener('click', () => {
+        const open = header.toggleAttribute('data-open');
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+      // "/" focuses search, like most documentation sites.
+      document.addEventListener('keydown', (e) => {
+        const t = e.target as HTMLElement;
+        if (e.key !== '/' || /INPUT|TEXTAREA/.test(t.tagName) || t.isContentEditable) return;
+        e.preventDefault();
+        const input = document.querySelector<HTMLInputElement>('#search-page-input') ?? document.querySelector<HTMLInputElement>('#q');
+        if (input && getComputedStyle(input).display !== 'none' && input.offsetParent) input.focus();
+        else location.href = document.querySelector<HTMLFormElement>('.header-search')!.action;
+      });
+    </script>
+  </body>
+</html>

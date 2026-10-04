@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { href } from '../lib/config';
+---
+
+<BaseLayout title="Lost in space">
+  <div class="container">
+    <header class="page-head" style="text-align:center;padding-top:120px">
+      <p class="eyebrow">404 · signal lost</p>
+      <h1>This region of space is empty</h1>
+      <p style="margin:0 auto">The note may have been renamed or moved in the vault.</p>
+      <p style="margin-top:32px">
+        <a class="btn" href={href('search')}>Search the archive</a>
+      </p>
+    </header>
+  </div>
+</BaseLayout>

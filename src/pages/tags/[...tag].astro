@@ -1,0 +1,23 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NoteList from '../../components/NoteList.astro';
+import { href } from '../../lib/config';
+import { getVault } from '../../lib/vault/vault';
+
+export function getStaticPaths() {
+  return [...getVault().tags.keys()].map((tag) => ({ params: { tag }, props: { tag } }));
+}
+
+const entry = getVault().tags.get(Astro.props.tag)!;
+const notes = [...entry.notes].sort((a, b) => a.title.localeCompare(b.title));
+---
+
+<BaseLayout title={`#${entry.name}`} nav="tags">
+  <div class="container">
+    <header class="page-head">
+      <p class="eyebrow"><a href={href('tags')}>Topics</a> · {notes.length} notes</p>
+      <h1>#{entry.name}</h1>
+    </header>
+    <NoteList notes={notes} excerpt />
+  </div>
+</BaseLayout>

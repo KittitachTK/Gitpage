@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NoteList from '../../components/NoteList.astro';
+import { recent } from '../../lib/site';
+import { getVault } from '../../lib/vault/vault';
+
+const vault = getVault();
+// Everything in Ideas/, plus `type: idea` notes filed elsewhere.
+const ideas = recent(vault, Infinity, (n) => n.section === 'Ideas' || n.type === 'idea' || n.type === 'conjecture');
+---
+
+<BaseLayout title="Ideas" nav="ideas">
+  <div class="container">
+    <header class="page-head">
+      <p class="eyebrow">Ideas · conjectures · sketches</p>
+      <h1>Ideas</h1>
+      <p>Half-formed thoughts kept in the open. Some will become research; most will not.</p>
+    </header>
+    <NoteList notes={ideas} excerpt />
+  </div>
+</BaseLayout>

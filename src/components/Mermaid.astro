@@ -1,0 +1,32 @@
+---
+/**
+ * Renders every `<pre class="mermaid">` on the page. Mermaid is large, so it is
+ * only loaded (as a separate chunk) on pages that actually contain a diagram.
+ */
+---
+
+<script>
+  async function renderMermaid() {
+    const blocks = document.querySelectorAll<HTMLElement>('pre.mermaid:not([data-processed])');
+    if (!blocks.length) return;
+    const { default: mermaid } = await import('mermaid');
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'loose', // allows `click node "url"` links in roadmaps
+      theme: 'base',
+      themeVariables: {
+        darkMode: true,
+        background: '#080d17',
+        primaryColor: '#0c1322',
+        primaryBorderColor: '#243150',
+        primaryTextColor: '#e8edf5',
+        lineColor: '#7e899c',
+        secondaryColor: '#0c1322',
+        tertiaryColor: '#050912',
+        fontFamily: 'Inter, "IBM Plex Sans Thai", sans-serif',
+      },
+    });
+    await mermaid.run({ nodes: [...blocks] });
+  }
+  renderMermaid();
+</script>

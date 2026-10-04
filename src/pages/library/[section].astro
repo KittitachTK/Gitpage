@@ -1,0 +1,43 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FolderTree from '../../components/FolderTree.astro';
+import NoteList from '../../components/NoteList.astro';
+import { buildTree, recent, sections, type SectionInfo } from '../../lib/site';
+import { getVault } from '../../lib/vault/vault';
+
+export function getStaticPaths() {
+  return sections(getVault()).map((s) => ({ params: { section: s.slug }, props: { folder: s.folder } }));
+}
+
+const vault = getVault();
+const sec = sections(vault).find((s) => s.folder === Astro.props.folder) as SectionInfo;
+const tree = buildTree(sec.notes, sec.folder === 'Other' ? 0 : 1);
+const latest = recent(vault, 5, (n) => sec.notes.includes(n));
+---
+
+<BaseLayout title={sec.label} nav="library">
+  <div class="container">
+    <header class="page-head">
+      <p class="eyebrow"><span class="section-dot" style={`--dot:${sec.color}`}></span>Library · {sec.notes.length} notes</p>
+      <h1>{sec.label}</h1>
+      <p>{sec.blurb}</p>
+    </header>
+    <div class="section-layout">
+      <nav class="tree panel" aria-label={`${sec.label} contents`}>
+        <FolderTree tree={tree} expanded />
+      </nav>
+      <section>
+        <p class="eyebrow">Recently updated</p>
+        <NoteList notes={latest} excerpt />
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .section-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+  .tree.panel { padding: 20px 24px; font-size: 0.95rem; }
+  @media (max-width: 860px) {
+    .section-layout { grid-template-columns: 1fr; }
+  }
+</style>

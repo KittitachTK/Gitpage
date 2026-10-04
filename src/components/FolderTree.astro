@@ -1,0 +1,35 @@
+---
+import type { TreeNode } from '../lib/site';
+import { noteUrl } from '../lib/site';
+
+interface Props {
+  tree: TreeNode;
+  /** Slug of the note being viewed (highlighted; its folders start open). */
+  current?: string;
+  /** Open every folder (library pages) instead of only the current path. */
+  expanded?: boolean;
+}
+const { tree, current, expanded = false } = Astro.props;
+const containsCurrent = (t: TreeNode): boolean =>
+  t.notes.some((n) => n.slug === current) || t.children.some(containsCurrent);
+---
+
+<ul>
+  {
+    tree.children.map((child) => (
+      <li>
+        <details open={expanded || containsCurrent(child)}>
+          <summary>{child.name} <small>({child.count})</small></summary>
+          <Astro.self tree={child} current={current} expanded={expanded} />
+        </details>
+      </li>
+    ))
+  }
+  {
+    tree.notes.map((n) => (
+      <li>
+        <a href={noteUrl(n)} aria-current={n.slug === current ? 'page' : undefined}>{n.title}</a>
+      </li>
+    ))
+  }
+</ul>

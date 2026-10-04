@@ -1,0 +1,130 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import NoteList from '../components/NoteList.astro';
+import { SITE, href } from '../lib/config';
+import { recent, sections } from '../lib/site';
+import { getVault } from '../lib/vault/vault';
+
+const vault = getVault();
+const secs = sections(vault).filter((s) => s.notes.length);
+const latest = recent(vault, 6);
+---
+
+<BaseLayout nav="home">
+  <section class="hero">
+    <canvas class="hero-sky" aria-hidden="true"></canvas>
+    <div class="hero-inner container">
+      <p class="eyebrow">{SITE.tagline}</p>
+      <h1>{SITE.name}<span>{SITE.subtitle}</span></h1>
+      <p class="hero-motto">Explore the unknown</p>
+      <p class="hero-copy">{SITE.description}</p>
+      <div class="hero-actions">
+        <a class="btn" href={href('library')}>Enter archive</a>
+        <a class="btn ghost" href={href('universe')}>Knowledge universe ✦</a>
+      </div>
+      <p class="hero-stats">
+        {vault.notes.length} notes · {vault.graph.links.length} connections · {vault.tags.size} topics
+      </p>
+    </div>
+  </section>
+
+  <section class="container home-block">
+    <p class="eyebrow">Library</p>
+    <div class="grid" style="margin-top:16px">
+      {
+        secs.map((s) => (
+          <a class="card" href={href(`library/${s.slug}`)}>
+            <span class="count">
+              <span class="section-dot" style={`--dot:${s.color}`} />
+              {s.notes.length} notes
+            </span>
+            <h3>{s.label}</h3>
+            <p>{s.blurb}</p>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="container home-block">
+    <p class="eyebrow">Recent transmissions</p>
+    <NoteList notes={latest} excerpt />
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    position: relative;
+    min-height: min(88vh, 820px);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    background:
+      radial-gradient(ellipse 60% 50% at 70% 30%, rgb(169 155 255 / 0.1), transparent 70%),
+      radial-gradient(ellipse 50% 40% at 25% 70%, rgb(127 212 255 / 0.08), transparent 70%),
+      var(--bg);
+  }
+  .hero-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero-inner { position: relative; text-align: center; padding-top: 48px; padding-bottom: 48px; }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    padding-left: 0.32em; /* optically re-centre the tracked word */
+    font-size: clamp(2.2rem, 8vw, 4.6rem);
+    margin: 18px 0 0;
+    line-height: 1.05;
+  }
+  .hero h1 span { display: block; font-size: 0.3em; letter-spacing: 0.5em; color: var(--text-muted); margin-top: 14px; font-weight: 400; }
+  .hero-motto { font-family: var(--font-mono); letter-spacing: 0.4em; text-transform: uppercase; font-size: 0.78rem; color: var(--accent); margin: 40px 0 14px; }
+  .hero-copy { max-width: 44ch; margin: 0 auto; color: var(--text-muted); }
+  .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 36px; }
+  .btn.ghost { border-color: var(--border); background: transparent; color: var(--text-muted); }
+  .hero-stats { margin-top: 28px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-faint); letter-spacing: 0.1em; }
+  .home-block { margin-top: 72px; }
+</style>
+
+<script>
+  // Slowly drifting starfield with a little pointer parallax; static under reduced motion.
+  const canvas = document.querySelector<HTMLCanvasElement>('.hero-sky')!;
+  const ctx = canvas.getContext('2d')!;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const stars = Array.from({ length: 520 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random(), tw: Math.random() * Math.PI * 2 }));
+  let w = 0, h = 0, mx = 0, my = 0, t = 0;
+
+  function size() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    w = canvas.clientWidth;
+    h = canvas.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (reduced) frame();
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, w, h);
+    for (const s of stars) {
+      const depth = 0.2 + s.z * 0.8;
+      const x = (((s.x * w + t * 4 * depth + mx * 18 * depth) % w) + w) % w;
+      const y = s.y * h + my * 12 * depth;
+      const a = 0.25 + 0.55 * depth * (0.75 + 0.25 * Math.sin(s.tw + t * 2));
+      const bright = s.z > 0.97;
+      ctx.fillStyle = bright ? `rgba(127,212,255,${a})` : `rgba(220,228,242,${a})`;
+      ctx.beginPath();
+      ctx.arc(x, y, (bright ? 1.6 : 0.4 + depth) * 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    t += 0.016;
+    if (!reduced) requestAnimationFrame(frame);
+  }
+
+  addEventListener('resize', size);
+  addEventListener('pointermove', (e) => {
+    mx = e.clientX / innerWidth - 0.5;
+    my = e.clientY / innerHeight - 0.5;
+  });
+  size();
+  if (!reduced) frame();
+</script>

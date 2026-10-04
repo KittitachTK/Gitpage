@@ -1,0 +1,64 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import NoteList from '../../components/NoteList.astro';
+import { noteUrl, projects } from '../../lib/site';
+import { getVault } from '../../lib/vault/vault';
+
+const vault = getVault();
+const all = projects(vault);
+const active = all.filter((p) => p.note.status === 'active');
+const previous = all.filter((p) => p.note.status !== 'active');
+const logs = all
+  .flatMap((p) => p.logs)
+  .sort((a, b) => (b.created?.getTime() ?? 0) - (a.created?.getTime() ?? 0))
+  .slice(0, 10);
+---
+
+<BaseLayout title="Research" nav="research">
+  <div class="container">
+    <header class="page-head">
+      <p class="eyebrow">Research sector</p>
+      <h1>Research</h1>
+      <p>
+        Projects are notes with <code>type: research-project</code>. Logs, open questions and ideas inside the project folder are
+        counted automatically.
+      </p>
+    </header>
+
+    <p class="eyebrow">Active</p>
+    {active.length === 0 && <p style="color:var(--text-muted)">No active projects.</p>}
+    {
+      active.map((p) => (
+        <a class="panel project card" href={noteUrl(p.note)}>
+          <span class="status" data-status={p.note.status}>{p.note.status}</span>
+          <h3>{p.note.title}</h3>
+          {p.question && <p class="question">Main question: {p.question}</p>}
+          <div class="stats">
+            <div class="stat"><b>{p.logs.length}</b><span>Research logs</span></div>
+            <div class="stat"><b>{p.references}</b><span>References</span></div>
+            <div class="stat"><b>{p.questions}</b><span>Open questions</span></div>
+            <div class="stat"><b>{p.ideas.length}</b><span>Ideas</span></div>
+          </div>
+        </a>
+      ))
+    }
+
+    {
+      logs.length > 0 && (
+        <section style="margin-top:56px">
+          <p class="eyebrow">Research logs</p>
+          <NoteList notes={logs} date="created" excerpt />
+        </section>
+      )
+    }
+
+    {
+      previous.length > 0 && (
+        <section style="margin-top:56px">
+          <p class="eyebrow">Previous research</p>
+          <NoteList notes={previous.map((p) => p.note)} excerpt />
+        </section>
+      )
+    }
+  </div>
+</BaseLayout>

@@ -1,0 +1,243 @@
+---
+/**
+ * Every Markdown file in the vault becomes one page here. URL = folders + name,
+ * slugified: Physics/Quantum Field Theory/Yang-Mills/Mass Gap.md
+ *   → /physics/quantum-field-theory/yang-mills/mass-gap
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import FolderTree from '../components/FolderTree.astro';
+import Mermaid from '../components/Mermaid.astro';
+import { href } from '../lib/config';
+import { renderNote } from '../lib/markdown/render';
+import { citeLabel, formatReference } from '../lib/vault/bib';
+import { tagSlug } from '../lib/vault/parse';
+import { buildTree, crumbs, fmtDate, isoDate, noteUrl, projects, roadmapMermaid, sectionColor } from '../lib/site';
+import { getVault } from '../lib/vault/vault';
+import type { Note } from '../lib/vault/types';
+
+export function getStaticPaths() {
+  return getVault().notes.map((note) => ({ params: { slug: note.slug }, props: { id: note.id } }));
+}
+
+const vault = getVault();
+const note = vault.notes.find((n) => n.id === Astro.props.id) as Note;
+const rendered = await renderNote(note, vault);
+
+// The page header already shows the title: drop a leading `# Title` that repeats it.
+const firstH1 = note.headings[0]?.depth === 1 && note.headings[0].text === note.title;
+const html = firstH1 ? rendered.html.replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>/, '') : rendered.html;
+const toc = note.headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+const backlinks = vault.backlinks(note);
+const sectionNotes = note.folders.length ? vault.notes.filter((n) => n.section === note.section) : [];
+const tree = buildTree(sectionNotes);
+
+// Local graph: the note, its neighbours, and their neighbours (capped).
+const local = new Set<Note>([note]);
+const ring1 = [...vault.outgoing(note), ...backlinks];
+ring1.forEach((n) => local.add(n));
+for (const n of ring1) {
+  if (local.size > 40) break;
+  for (const m of [...vault.outgoing(n), ...vault.backlinks(n)]) if (local.size <= 40) local.add(m);
+}
+const ids = new Set([...local].map((n) => n.id));
+const localGraph = {
+  nodes: vault.graph.nodes.filter((n) => ids.has(n.id)),
+  links: vault.graph.links.filter((l) => ids.has(l.source) && ids.has(l.target)),
+};
+
+const project = note.type === 'research-project' ? projects(vault).find((p) => p.note === note) : undefined;
+const roadmap = project ? roadmapMermaid(vault, project) : undefined;
+const bib = rendered.citations.map((k) => vault.bib.get(k)!).filter(Boolean);
+const field = note.frontmatter.field ? String(note.frontmatter.field) : undefined;
+---
+
+<BaseLayout title={note.title} description={note.excerpt}>
+  <div class="note-layout">
+    <aside class="note-sidebar tree" aria-label="Section contents">
+      {
+        sectionNotes.length > 0 && (
+          <>
+            <div class="aside-block">
+              <h2><span class="section-dot" style={`--dot:${sectionColor(note.section)}`} />{note.section}</h2>
+              <FolderTree tree={tree} current={note.slug} />
+            </div>
+          </>
+        )
+      }
+    </aside>
+
+    <article class="note-main">
+      <header class="note-header">
+        <nav class="breadcrumbs" aria-label="Breadcrumb">
+          {crumbs(note).map((c, i) => (
+            <>
+              {i > 0 && <span>/</span>}
+              {c.url ? <a href={c.url}>{c.label}</a> : <span>{c.label}</span>}
+            </>
+          ))}
+        </nav>
+        <h1>{note.title}</h1>
+        <div class="note-meta">
+          {note.status && <span class="status" data-status={note.status}>{note.status}</span>}
+          {field && <span>{field}</span>}
+          {note.updated && <span>Updated <time datetime={isoDate(note.updated)}>{fmtDate(note.updated)}</time></span>}
+        </div>
+        {
+          note.tags.length > 0 && (
+            <div style="margin-top:14px">
+              {note.tags.map((t) => <a class="tag-chip" href={href(`tags/${tagSlug(t)}`)}>#{t}</a>)}
+            </div>
+          )
+        }
+      </header>
+
+      {
+        project && (
+          <section class="panel project" aria-label="Research project">
+            <span class="eyebrow">Research sector</span>
+            {project.question && <p class="question">{project.question}</p>}
+            <div class="stats">
+              <div class="stat"><b>{project.logs.length}</b><span>Research logs</span></div>
+              <div class="stat"><b>{project.references}</b><span>References</span></div>
+              <div class="stat"><b>{project.questions}</b><span>Open questions</span></div>
+              <div class="stat"><b>{project.ideas.length}</b><span>Ideas</span></div>
+            </div>
+          </section>
+        )
+      }
+
+      {
+        roadmap && (
+          <section class="prose">
+            <h2 id="roadmap">Roadmap</h2>
+            <pre class="mermaid">{roadmap}</pre>
+          </section>
+        )
+      }
+
+      <div class="prose" set:html={html} />
+
+      {
+        project && project.logs.length > 0 && (
+          <section class="prose">
+            <h2 id="research-logs">Research Logs</h2>
+            <ul>
+              {project.logs.map((l) => (
+                <li>
+                  <a href={noteUrl(l)}>{l.title}</a> <small style="color:var(--text-faint)">{fmtDate(l.created)}</small>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+
+      {
+        bib.length > 0 && (
+          <section class="bibliography">
+            <h2>References</h2>
+            <ol>
+              {bib.map((e) => {
+                const r = formatReference(e);
+                return (
+                  <li id={`ref-${e.key}`}>
+                    {r.authors}
+                    {r.year && ` (${r.year}). `}
+                    {r.title && <em>{r.title}</em>}
+                    {r.venue && `. ${r.venue}`}
+                    {r.url && (
+                      <>
+                        {'. '}
+                        <a href={r.url} rel="noopener">{r.url.replace(/^https?:\/\//, '')}</a>
+                      </>
+                    )}
+                    <span class="sr-only">{citeLabel(e)}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        )
+      }
+
+      {
+        backlinks.length > 0 && (
+          <section class="backlinks">
+            <h2>Backlinks · Referenced by</h2>
+            <ul>
+              {backlinks.map((b) => (
+                <li>
+                  <a href={noteUrl(b)}>
+                    → {b.title}
+                    {b.excerpt && <small>{b.excerpt}</small>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+    </article>
+
+    <aside class="note-aside" aria-label="On this page">
+      {
+        toc.length > 1 && (
+          <nav class="aside-block toc">
+            <h2>Contents</h2>
+            <ol>
+              {toc.map((h, i) => (
+                <li data-depth={h.depth}>
+                  <a href={`#${h.id}`}>
+                    <span class="n">{h.depth === 2 ? String(toc.filter((x, j) => j <= i && x.depth === 2).length).padStart(2, '0') : '·'}</span>
+                    <span>{h.text}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )
+      }
+      {
+        localGraph.nodes.length > 1 && (
+          <div class="aside-block">
+            <h2>Connected knowledge</h2>
+            <canvas class="local-graph" data-focus={note.id} aria-label={`Graph of notes connected to ${note.title}`} />
+            <script type="application/json" id="local-graph-data" set:html={JSON.stringify(localGraph).replace(/</g, '\\u003c')} />
+          </div>
+        )
+      }
+    </aside>
+  </div>
+
+  {(rendered.hasMermaid || roadmap) && <Mermaid />}
+
+  <script>
+    import { mountGraph } from '../scripts/graph';
+
+    const canvas = document.querySelector<HTMLCanvasElement>('canvas.local-graph');
+    const data = document.getElementById('local-graph-data');
+    if (canvas && data && getComputedStyle(canvas).display !== 'none' && canvas.offsetParent) {
+      mountGraph(canvas, JSON.parse(data.textContent!), {
+        base: document.documentElement.dataset.base!,
+        focus: canvas.dataset.focus,
+        labelDegree: 0,
+      });
+    }
+
+    // Highlight the TOC entry for the section being read.
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('.toc a')];
+    const targets = links.map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1)))).filter(Boolean) as HTMLElement[];
+    if (targets.length) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+          if (!visible) return;
+          links.forEach((a) => a.classList.toggle('active', a.hash === '#' + encodeURIComponent(visible.target.id) || a.hash === '#' + visible.target.id));
+        },
+        { rootMargin: '0px 0px -70% 0px' },
+      );
+      targets.forEach((t) => io.observe(t));
+    }
+  </script>
+</BaseLayout>
