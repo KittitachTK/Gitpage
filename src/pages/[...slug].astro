@@ -11,7 +11,7 @@ import { href } from '../lib/config';
 import { renderNote } from '../lib/markdown/render';
 import { citeLabel, formatReference } from '../lib/vault/bib';
 import { tagSlug } from '../lib/vault/parse';
-import { buildTree, crumbs, fmtDate, isoDate, noteUrl, projects, roadmapMermaid, sectionColor } from '../lib/site';
+import { buildTree, crumbs, fmtDate, isoDate, noteUrl, projects, readingMinutes, roadmapMermaid, sectionColor, siblings } from '../lib/site';
 import { getVault } from '../lib/vault/vault';
 import type { Note } from '../lib/vault/types';
 
@@ -59,6 +59,8 @@ const project = note.type === 'research-project' ? projects(vault).find((p) => p
 const roadmap = project ? roadmapMermaid(vault, project) : undefined;
 const bib = rendered.citations.map((k) => vault.bib.get(k)!).filter(Boolean);
 const field = note.frontmatter.field ? String(note.frontmatter.field) : undefined;
+const minutes = readingMinutes(note);
+const { prev, next } = siblings(vault, note);
 ---
 
 <BaseLayout title={note.title} description={note.excerpt || `${note.title} — ${note.folders.join(' / ') || 'Knowledge archive'}`}>
@@ -91,6 +93,7 @@ const field = note.frontmatter.field ? String(note.frontmatter.field) : undefine
           {note.status && <span class="status" data-status={note.status}>{note.status}</span>}
           {field && <span>{field}</span>}
           {note.updated && <span>Updated <time datetime={isoDate(note.updated)}>{fmtDate(note.updated)}</time></span>}
+          <span>{minutes} min read</span>
         </div>
         {
           note.tags.length > 0 && (
@@ -171,6 +174,25 @@ const field = note.frontmatter.field ? String(note.frontmatter.field) : undefine
       }
 
       {
+        (prev || next) && (
+          <nav class="pager" aria-label="Previous and next note">
+            {prev ? (
+              <a class="prev" href={noteUrl(prev)} rel="prev">
+                <small>← Previous</small>
+                <span>{prev.title}</span>
+              </a>
+            ) : <span />}
+            {next && (
+              <a class="next" href={noteUrl(next)} rel="next">
+                <small>Next →</small>
+                <span>{next.title}</span>
+              </a>
+            )}
+          </nav>
+        )
+      }
+
+      {
         backlinks.length > 0 && (
           <section class="backlinks">
             <h2>Backlinks · Referenced by</h2>
@@ -225,7 +247,7 @@ const field = note.frontmatter.field ? String(note.frontmatter.field) : undefine
 
   <script>
     import { mountGraph } from '../scripts/graph';
-    import { initReadingProgress, initToc } from '../scripts/reading';
+    import { initCopyButtons, initReadingProgress, initToc } from '../scripts/reading';
     import { initLinkPreviews } from '../scripts/preview';
 
     const canvas = document.querySelector<HTMLCanvasElement>('canvas.local-graph');
@@ -245,5 +267,6 @@ const field = note.frontmatter.field ? String(note.frontmatter.field) : undefine
     const toc = document.querySelector<HTMLElement>('.toc');
     if (toc) initToc(toc);
     initLinkPreviews(document.querySelector('.note-main')!);
+    initCopyButtons(document.querySelector<HTMLElement>('.note-main')!);
   </script>
 </BaseLayout>

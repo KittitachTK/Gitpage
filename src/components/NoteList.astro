@@ -13,7 +13,7 @@ const { notes, excerpt = false, date = 'updated' } = Astro.props;
 <ul class="note-list">
   {
     notes.map((n) => (
-      <li>
+      <li data-type={n.type}>
         <a href={noteUrl(n)}>
           <span class="t" data-vt-title>{n.title}</span>
           <span class="p">{crumbs(n).map((c) => c.label).join(' / ') || 'Archive'}</span>

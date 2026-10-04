@@ -54,6 +54,11 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
         try {
           const saved = localStorage.getItem('planktos:motion');
           if (saved === 'on' || saved === 'off') root.dataset.motion = saved;
+          // Dark is the default; the header toggle can switch to the light theme.
+          if (localStorage.getItem('planktos:theme') === 'light') {
+            root.dataset.theme = 'light';
+            document.querySelector('meta[name="theme-color"]').content = '#f5f2ea';
+          }
         } catch {}
         const motionOk = () =>
           root.dataset.motion === 'on' ||
@@ -128,6 +133,12 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
             <line class="slash" x1="4" y1="20" x2="20" y2="4"></line>
           </svg>
         </button>
+        <button class="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch to light theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+            <path class="moon" d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"></path>
+            <g class="sun"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"></path></g>
+          </svg>
+        </button>
         <button class="menu-toggle" type="button" aria-expanded="false">Menu</button>
       </div>
     </header>
@@ -155,6 +166,25 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
       syncMotionBtn(motionEnabled());
       onMotionChange(syncMotionBtn);
       motionBtn.addEventListener('click', () => setMotion(!motionEnabled()));
+
+      const root = document.documentElement;
+      const themeBtn = document.querySelector<HTMLButtonElement>('.theme-toggle')!;
+      const syncThemeBtn = () => {
+        const label = root.dataset.theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+        themeBtn.setAttribute('aria-label', label);
+        themeBtn.title = label;
+      };
+      syncThemeBtn();
+      themeBtn.addEventListener('click', () => {
+        const light = root.dataset.theme !== 'light';
+        if (light) root.dataset.theme = 'light';
+        else delete root.dataset.theme;
+        document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')!.content = light ? '#f5f2ea' : '#07090e';
+        try { localStorage.setItem('planktos:theme', light ? 'light' : 'dark'); } catch {}
+        syncThemeBtn();
+        // Canvas graphs and diagrams re-read their colours.
+        document.dispatchEvent(new Event('themechange'));
+      });
 
       // Buttons: a soft ripple from where they were pressed.
       document.addEventListener('pointerdown', (e) => {

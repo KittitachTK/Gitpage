@@ -88,15 +88,22 @@ const approach = (dt: number, ms: number) => 1 - Math.exp(-dt / ms);
 
 export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: GraphOptions) {
   const ctx = canvas.getContext('2d')!;
-  const css = getComputedStyle(document.documentElement);
+  // Colours come from the canvas itself, so a `.space` scope (always dark) or the
+  // page theme applies; they are re-read when the theme is switched.
+  const css = getComputedStyle(canvas);
   const colorCache = new Map<string, string>();
   const color = (section: string) => {
     if (!colorCache.has(section)) colorCache.set(section, css.getPropertyValue(SECTION_VARS[section] ?? '--sec-other').trim() || '#8e939c');
     return colorCache.get(section)!;
   };
-  const textColor = css.getPropertyValue('--text').trim() || '#e6e2d8';
-  const faint = css.getPropertyValue('--text-faint').trim() || '#858076';
-  const linkColor = css.getPropertyValue('--border-strong').trim() || '#2d3543';
+  let textColor = '', faint = '', linkColor = '';
+  const readColors = () => {
+    colorCache.clear();
+    textColor = css.getPropertyValue('--text').trim() || '#e6e2d8';
+    faint = css.getPropertyValue('--text-faint').trim() || '#858076';
+    linkColor = css.getPropertyValue('--border-strong').trim() || '#2d3543';
+  };
+  readColors();
 
   const nodes: GNode[] = data.nodes.map((n) => ({ ...n }));
   const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -649,6 +656,8 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
 
   const stopLoop = animateWhileVisible(canvas, frame, settle);
   const offMotion = onMotionChange((on) => { if (!on) sim.stop(); });
+  const onTheme = () => { readColors(); invalidate(); };
+  document.addEventListener('themechange', onTheme);
 
   return {
     /** Highlight nodes whose title/tags match and frame them; empty string clears. */
@@ -663,6 +672,6 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       return filter?.size ?? nodes.length;
     },
     fit() { fit(); invalidate(); },
-    destroy() { sim.stop(); ro.disconnect(); stopLoop(); offMotion(); },
+    destroy() { sim.stop(); ro.disconnect(); stopLoop(); offMotion(); document.removeEventListener('themechange', onTheme); },
   };
 }

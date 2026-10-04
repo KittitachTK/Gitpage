@@ -6,27 +6,47 @@
 ---
 
 <script>
+  const DARK = {
+    darkMode: true,
+    background: '#10141c',
+    primaryColor: '#151a24',
+    primaryBorderColor: '#2d3543',
+    primaryTextColor: '#e6e2d8',
+    lineColor: '#858076',
+    secondaryColor: '#151a24',
+    tertiaryColor: '#0b0e15',
+  };
+  const LIGHT = {
+    darkMode: false,
+    background: '#fffdf8',
+    primaryColor: '#eeeadf',
+    primaryBorderColor: '#c8bfac',
+    primaryTextColor: '#24221d',
+    lineColor: '#6f695e',
+    secondaryColor: '#eeeadf',
+    tertiaryColor: '#faf8f2',
+  };
+
   async function renderMermaid() {
-    const blocks = document.querySelectorAll<HTMLElement>('pre.mermaid:not([data-processed])');
+    const blocks = [...document.querySelectorAll<HTMLElement>('pre.mermaid')];
     if (!blocks.length) return;
+    // Keep each diagram's source so it can be redrawn when the theme changes.
+    for (const b of blocks) {
+      if (b.dataset.source === undefined) b.dataset.source = b.textContent ?? '';
+      else { b.textContent = b.dataset.source; b.removeAttribute('data-processed'); }
+    }
     const { default: mermaid } = await import('mermaid');
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: 'loose', // allows `click node "url"` links in roadmaps
       theme: 'base',
       themeVariables: {
-        darkMode: true,
-        background: '#10141c',
-        primaryColor: '#151a24',
-        primaryBorderColor: '#2d3543',
-        primaryTextColor: '#e6e2d8',
-        lineColor: '#858076',
-        secondaryColor: '#151a24',
-        tertiaryColor: '#0b0e15',
+        ...(document.documentElement.dataset.theme === 'light' ? LIGHT : DARK),
         fontFamily: 'Inter, "IBM Plex Sans Thai", sans-serif',
       },
     });
-    await mermaid.run({ nodes: [...blocks] });
+    await mermaid.run({ nodes: blocks });
   }
   renderMermaid();
+  document.addEventListener('themechange', renderMermaid);
 </script>

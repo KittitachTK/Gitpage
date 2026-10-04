@@ -12,7 +12,11 @@ export function getStaticPaths() {
 const vault = getVault();
 const sec = sections(vault).find((s) => s.folder === Astro.props.folder) as SectionInfo;
 const tree = buildTree(sec.notes, sec.folder === 'Other' ? 0 : 1);
-const latest = recent(vault, 5, (n) => sec.notes.includes(n));
+const all = recent(vault, Infinity, (n) => sec.notes.includes(n));
+// Note types (summary, exam, lab, …) present in this section, most common first.
+const counts = new Map<string, number>();
+for (const n of all) if (n.type) counts.set(n.type, (counts.get(n.type) ?? 0) + 1);
+const types = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 ---
 
 <BaseLayout title={sec.label} nav="library">
@@ -26,17 +30,58 @@ const latest = recent(vault, 5, (n) => sec.notes.includes(n));
       <nav class="tree panel" aria-label={`${sec.label} contents`}>
         <FolderTree tree={tree} expanded />
       </nav>
-      <section>
-        <p class="eyebrow">Recently updated</p>
-        <NoteList notes={latest} excerpt />
+      <section class="by-type">
+        <p class="eyebrow">Notes · most recently updated first</p>
+        {
+          types.length > 1 && (
+            <div class="type-filter" role="group" aria-label="Filter by note type">
+              <button type="button" class="type-chip" data-type="" aria-pressed="true">All <small>{all.length}</small></button>
+              {types.map(([t, c]) => (
+                <button type="button" class="type-chip" data-type={t} aria-pressed="false">{t} <small>{c}</small></button>
+              ))}
+            </div>
+          )
+        }
+        <NoteList notes={all} excerpt />
       </section>
     </div>
   </div>
 </BaseLayout>
 
+<script>
+  // Filter the list by note type; the choice is kept in ?type= so it can be shared.
+  const chips = [...document.querySelectorAll<HTMLButtonElement>('.type-chip')];
+  const items = [...document.querySelectorAll<HTMLElement>('.by-type .note-list li')];
+  const apply = (type: string) => {
+    if (type && !chips.some((c) => c.dataset.type === type)) type = '';
+    for (const c of chips) c.setAttribute('aria-pressed', String(c.dataset.type === type));
+    for (const li of items) li.hidden = !!type && li.dataset.type !== type;
+  };
+  for (const c of chips) {
+    c.addEventListener('click', () => {
+      const type = c.dataset.type!;
+      apply(type);
+      const url = new URL(location.href);
+      if (type) url.searchParams.set('type', type);
+      else url.searchParams.delete('type');
+      history.replaceState(null, '', url);
+    });
+  }
+  apply(new URL(location.href).searchParams.get('type') ?? '');
+</script>
+
 <style>
   .section-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
   .tree.panel { padding: 20px 24px; font-size: 0.95rem; }
+  .type-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+  .type-chip {
+    font: inherit; font-family: var(--font-mono); font-size: 0.75rem; text-transform: capitalize; cursor: pointer;
+    color: var(--text-muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px;
+    transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
+  }
+  .type-chip small { color: var(--text-faint); margin-left: 2px; }
+  .type-chip:hover { color: var(--text); border-color: var(--border-strong); }
+  .type-chip[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
   @media (max-width: 860px) {
     .section-layout { grid-template-columns: 1fr; }
   }

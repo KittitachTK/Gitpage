@@ -66,7 +66,9 @@ const toHtml = unified()
   .use(rehypeMathjaxSvg)
   .use(rehypeTaskLabels)
   .use(rehypeShiki, {
-    theme: 'github-dark-dimmed',
+    // Dark colours are inlined; the light theme's ride along as --shiki-light vars.
+    themes: { dark: 'github-dark-dimmed', light: 'github-light' },
+    defaultColor: 'dark',
     lazy: true,
     fallbackLanguage: 'text',
     addLanguageClass: true,

@@ -76,8 +76,7 @@ export function mountNebula(canvas: HTMLCanvasElement, parallax: () => { x: numb
   const uTime = gl.getUniformLocation(prog, 'uTime');
   const uShift = gl.getUniformLocation(prog, 'uShift');
 
-  let time = 40; // start mid-evolution so the first frame already looks formed
-  // The nebula is soft and slow: a third of the resolution and ~20 fps are invisible savings.
+  let time = 40; 
   const SCALE = 0.35;
   const FRAME_MS = 50;
   let sinceDraw = FRAME_MS;

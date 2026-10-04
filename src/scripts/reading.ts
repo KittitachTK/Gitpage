@@ -75,3 +75,35 @@ export function initToc(toc: HTMLElement) {
   addEventListener('resize', schedule);
   update();
 }
+
+/** A "Copy" button on every code block (not diagrams or maths). */
+export function initCopyButtons(root: HTMLElement) {
+  for (const pre of root.querySelectorAll<HTMLPreElement>('.prose pre:not(.mermaid)')) {
+    const code = pre.querySelector('code');
+    if (!code) continue;
+    // Wrap so the button stays put while the code scrolls sideways.
+    const wrap = document.createElement('div');
+    wrap.className = 'code-block';
+    pre.replaceWith(wrap);
+    wrap.append(pre);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-code';
+    btn.textContent = 'Copy';
+    btn.setAttribute('aria-label', 'Copy code to clipboard');
+    let timer = 0;
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(code.textContent ?? '');
+        btn.textContent = 'Copied';
+      } catch {
+        btn.textContent = 'Failed';
+      }
+      btn.classList.add('done');
+      clearTimeout(timer);
+      timer = window.setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1600);
+    });
+    wrap.append(btn);
+  }
+}

@@ -42,6 +42,9 @@ export interface TreeNode {
   count: number;
 }
 
+/** Title order used everywhere notes are listed: numbers sort naturally (Ch9 < Ch10). */
+export const byTitle = (a: Note, b: Note) => a.title.localeCompare(b.title, undefined, { numeric: true });
+
 /** Folder tree for a set of notes, starting below `depth` leading folders. */
 export function buildTree(notes: Note[], depth = 1): TreeNode {
   const root: TreeNode = { name: '', path: '', children: [], notes: [], count: 0 };
@@ -58,8 +61,8 @@ export function buildTree(notes: Note[], depth = 1): TreeNode {
     node.notes.push(n);
   }
   const finish = (t: TreeNode): number => {
-    t.children.sort((a, b) => a.name.localeCompare(b.name));
-    t.notes.sort((a, b) => a.title.localeCompare(b.title));
+    t.children.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    t.notes.sort(byTitle);
     return (t.count = t.notes.length + t.children.reduce((s, c) => s + finish(c), 0));
   };
   finish(root);
@@ -72,6 +75,26 @@ export function recent(vault: Vault, limit = 8, filter: (n: Note) => boolean = (
     .filter((n) => n.slug !== 'about')
     .sort((a, b) => (b.updated?.getTime() ?? 0) - (a.updated?.getTime() ?? 0))
     .slice(0, limit);
+}
+
+/** Previous / next note in the same folder, in the folder tree's order. */
+export function siblings(vault: Vault, note: Note): { prev?: Note; next?: Note } {
+  if (!note.folders.length) return {};
+  const folder = note.folders.join('/');
+  const list = vault.notes.filter((n) => n.folders.join('/') === folder).sort(byTitle);
+  const i = list.indexOf(note);
+  return { prev: list[i - 1], next: list[i + 1] };
+}
+
+/**
+ * Estimated reading time in minutes. Thai is written without spaces between
+ * words, so it is measured in characters (~900/min) and Latin text in words
+ * (~220/min).
+ */
+export function readingMinutes(note: Note): number {
+  const words = note.text.match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g)?.length ?? 0;
+  const thai = note.text.match(/\p{Script=Thai}/gu)?.length ?? 0;
+  return Math.max(1, Math.round(words / 220 + thai / 900));
 }
 
 export function noteUrl(n: Note) {

@@ -16,7 +16,7 @@ const stats = [
 ---
 
 <BaseLayout nav="home">
-  <section class="hero">
+  <section class="hero space">
     <!--
       Decide before the hero paints whether to play the opening sequence: once per
       session, and only with motion on. Inline so there is no flash of final state.
@@ -62,7 +62,7 @@ const stats = [
 
   <section class="container home-block">
     <p class="eyebrow">Knowledge universe</p>
-    <a class="mini-universe" href={href('universe')} aria-label="Open the Knowledge Universe">
+    <a class="mini-universe space" href={href('universe')} aria-label="Open the Knowledge Universe">
       <canvas class="mini-canvas" aria-hidden="true"></canvas>
       <span class="mini-caption">
         <strong>{vault.notes.length} stars · {vault.graph.links.length} connections</strong>
