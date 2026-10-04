@@ -219,9 +219,16 @@ a.card:hover { text-decoration: none; border-color: var(--border-strong); transf
 .aside-block { margin-bottom: 32px; }
 .aside-block h2 { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint); font-weight: 400; margin: 0 0 12px; }
 
-.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+.toc ol { position: relative; list-style: none; margin: 0; padding: 0 0 0 12px; counter-reset: toc; border-left: 1px solid var(--border); }
 .toc li { margin: 0; }
-.toc a { display: flex; gap: 10px; color: var(--text-muted); padding: 4px 0; line-height: 1.4; }
+.toc a { display: flex; gap: 10px; color: var(--text-muted); padding: 4px 0; line-height: 1.4; transition: color var(--dur-fast); }
+/* Marker that glides to the section being read (positioned by reading.ts). */
+.toc-marker {
+  position: absolute; left: -1px; top: 0; width: 2px; height: 0; border-radius: 2px;
+  background: var(--accent); opacity: 0; pointer-events: none;
+  transition: transform var(--dur-base) var(--ease-out), height var(--dur-base) var(--ease-out), opacity var(--dur-base);
+}
+.toc-marker.visible { opacity: 1; }
 .toc a:hover, .toc a.active { color: var(--text); text-decoration: none; }
 .toc a.active .n { color: var(--accent); }
 .toc .n { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-faint); padding-top: 2px; min-width: 1.6em; }
@@ -341,6 +348,61 @@ details.callout[open] > summary.callout-title::after { content: '−'; }
 .stat span { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
 
 /* ---- reduced motion ------------------------------------------------------ */
+
+/* ---- reading aids (note pages) ------------------------------------------- */
+
+.read-progress {
+  position: fixed; top: var(--header-h); left: 0; right: 0; height: 2px; z-index: 49;
+  background: linear-gradient(90deg, rgb(var(--accent-rgb) / 0.35), var(--accent));
+  transform-origin: 0 50%; transform: scaleX(0); opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-base);
+}
+.read-progress.visible { opacity: 1; }
+
+/* Smooth jumps within a page, only while motion is on. */
+html { scroll-behavior: smooth; }
+html[data-motion='off'] { scroll-behavior: auto; }
+@media (prefers-reduced-motion: reduce) { html:not([data-motion='on']) { scroll-behavior: auto; } }
+
+/* The heading you jumped to glows briefly so you can see where you landed. */
+.prose :is(h1, h2, h3, h4, h5, h6, p, li, div):target { animation: target-glow 1.8s var(--ease-out) 0.25s both; border-radius: 4px; }
+@keyframes target-glow {
+  0% { background: rgb(var(--accent-rgb) / 0); box-shadow: 0 0 0 0 rgb(var(--accent-rgb) / 0); }
+  20% { background: rgb(var(--accent-rgb) / 0.16); box-shadow: 0 0 0 6px rgb(var(--accent-rgb) / 0.16); }
+  100% { background: rgb(var(--accent-rgb) / 0); box-shadow: 0 0 0 6px rgb(var(--accent-rgb) / 0); }
+}
+
+/* Foldable callouts open and close smoothly where the browser can animate to `auto`. */
+:root { interpolate-size: allow-keywords; }
+details.callout::details-content {
+  block-size: 0; overflow: clip;
+  transition: block-size var(--dur-base) var(--ease-out), content-visibility var(--dur-base) allow-discrete;
+}
+details.callout[open]::details-content { block-size: auto; }
+details.callout[open] > .callout-content { animation: fold-in var(--dur-base) var(--ease-out); }
+@keyframes fold-in { from { opacity: 0; transform: translateY(-4px); } }
+summary.callout-title::after { display: inline-block; transition: transform var(--dur-base) var(--ease-out); }
+details.callout[open] > summary.callout-title::after { transform: rotate(180deg); }
+
+/* Link preview card (preview.ts). */
+.preview-pop {
+  position: absolute; z-index: 60; max-height: min(380px, 60vh); overflow: auto;
+  background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.55);
+  opacity: 0; transform: translateY(4px) scale(0.98); transform-origin: top left;
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-out);
+  scrollbar-width: thin;
+}
+.preview-pop[data-side='above'] { transform-origin: bottom left; transform: translateY(-4px) scale(0.98); }
+.preview-pop.open { opacity: 1; transform: none; }
+.preview-head { position: sticky; top: 0; z-index: 1; display: grid; gap: 2px; padding: 12px 16px 10px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.preview-crumbs { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
+.preview-head strong { font-family: var(--font-display); font-weight: 500; font-size: 1rem; color: var(--text); line-height: 1.3; }
+.preview-body { padding: 12px 16px 6px; font-size: 0.88rem; }
+.preview-body h1, .preview-body h2, .preview-body h3 { font-size: 1rem; margin: 0.8em 0 0.4em; border: 0; padding: 0; }
+.preview-body > :first-child { margin-top: 0; }
+.preview-body mjx-container[display='true'] { margin: 0.8em 0; }
+.preview-more { color: var(--text-faint); }
 
 /* ---- scroll reveal (added by motion.ts only when motion is on) ------------- */
 

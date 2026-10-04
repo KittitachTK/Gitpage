@@ -218,8 +218,12 @@ const field = note.frontmatter.field ? String(note.frontmatter.field) : undefine
 
   {(rendered.hasMermaid || roadmap) && <Mermaid />}
 
+  <div class="read-progress" aria-hidden="true"></div>
+
   <script>
     import { mountGraph } from '../scripts/graph';
+    import { initReadingProgress, initToc } from '../scripts/reading';
+    import { initLinkPreviews } from '../scripts/preview';
 
     const canvas = document.querySelector<HTMLCanvasElement>('canvas.local-graph');
     const data = document.getElementById('local-graph-data');
@@ -229,22 +233,14 @@ const field = note.frontmatter.field ? String(note.frontmatter.field) : undefine
         focus: canvas.dataset.focus,
         labelDegree: 0,
         intro: 'fade',
+        // Neighbours orbit the current note slowly (it sits at the centre of rotation).
+        drift: 0.05,
       });
     }
 
-    // Highlight the TOC entry for the section being read.
-    const links = [...document.querySelectorAll<HTMLAnchorElement>('.toc a')];
-    const targets = links.map((a) => document.getElementById(decodeURIComponent(a.hash.slice(1)))).filter(Boolean) as HTMLElement[];
-    if (targets.length) {
-      const io = new IntersectionObserver(
-        (entries) => {
-          const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-          if (!visible) return;
-          links.forEach((a) => a.classList.toggle('active', a.hash === '#' + encodeURIComponent(visible.target.id) || a.hash === '#' + visible.target.id));
-        },
-        { rootMargin: '0px 0px -70% 0px' },
-      );
-      targets.forEach((t) => io.observe(t));
-    }
+    initReadingProgress(document.querySelector<HTMLElement>('.read-progress')!, document.querySelector<HTMLElement>('.note-main')!);
+    const toc = document.querySelector<HTMLElement>('.toc');
+    if (toc) initToc(toc);
+    initLinkPreviews(document.querySelector('.note-main')!);
   </script>
 </BaseLayout>
