@@ -134,10 +134,9 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
           </svg>
         </button>
         <button class="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch to light theme">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-            <path class="moon" d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"></path>
-            <g class="sun"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"></path></g>
-          </svg>
+          <!-- Day/night switch adapted from Uiverse.io (rishichawda); styles in global.css. -->
+          <span class="tt-sky" aria-hidden="true"><span class="tt-stars"></span><span class="tt-cloud"></span></span>
+          <span class="tt-knob" aria-hidden="true"></span>
         </button>
         <button class="menu-toggle" type="button" aria-expanded="false">Menu</button>
       </div>
@@ -146,6 +145,12 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
     <main id="main">
       <slot />
     </main>
+
+    <!-- Back-to-top adapted from Uiverse.io (vinodjangid07); styles in global.css. -->
+    <button class="to-top" type="button" aria-label="Back to top">
+      <svg viewBox="0 0 384 512" aria-hidden="true"><path d="M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"></path></svg>
+      <span class="to-top-label" aria-hidden="true">Back to top</span>
+    </button>
 
     <footer class="site-footer">
       <div class="container">
@@ -199,6 +204,30 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
       });
       document.addEventListener('animationend', (e) => {
         if ((e.target as Element).classList?.contains('rippling')) (e.target as Element).classList.remove('rippling');
+      });
+
+      // Library cards: a glow on the border follows the pointer.
+      document.addEventListener('pointermove', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        const card = (e.target as Element).closest?.<HTMLElement>('.card');
+        if (!card) return;
+        const r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', `${e.clientX - r.left}px`);
+        card.style.setProperty('--my', `${e.clientY - r.top}px`);
+      });
+
+      // Back to top: shown once the reader is well down a long page.
+      const toTop = document.querySelector<HTMLButtonElement>('.to-top')!;
+      let toTopRaf = 0;
+      const syncToTop = () => {
+        toTopRaf = 0;
+        toTop.classList.toggle('shown', scrollY > Math.max(600, innerHeight));
+      };
+      addEventListener('scroll', () => { if (!toTopRaf) toTopRaf = requestAnimationFrame(syncToTop); }, { passive: true });
+      syncToTop();
+      toTop.addEventListener('click', () => {
+        scrollTo({ top: 0, behavior: motionEnabled() ? 'smooth' : 'auto' });
+        document.querySelector<HTMLElement>('.brand')?.focus({ preventScroll: true });
       });
 
       const header = document.querySelector<HTMLElement>('.site-header')!;

@@ -20,7 +20,7 @@ const secs = sections(getVault());
     <div class="grid">
       {
         secs.map((s) => (
-          <a class="card" href={href(`library/${s.slug}`)}>
+          <a class="card" href={href(`library/${s.slug}`)} style={`--glow:${s.color}`}>
             <span class="count">
               <span class="section-dot" style={`--dot:${s.color}`} />
               {s.notes.length} notes

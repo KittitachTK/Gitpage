@@ -76,7 +76,7 @@ const stats = [
     <div class="grid home-cards" style="margin-top:16px">
       {
         secs.map((s) => (
-          <a class="card" href={href(`library/${s.slug}`)}>
+          <a class="card" href={href(`library/${s.slug}`)} style={`--glow:${s.color}`}>
             <span class="count">
               <span class="section-dot" style={`--dot:${s.color}`} />
               {s.notes.length} notes

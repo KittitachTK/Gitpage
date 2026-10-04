@@ -174,6 +174,8 @@ img, svg, video { max-width: 100%; height: auto; }
   border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 0.85rem;
 }
 .header-search input::placeholder { color: var(--text-faint); }
+.header-search input { transition: border-color var(--dur-fast), box-shadow var(--dur-base) var(--ease-out); }
+.header-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), 0 0 22px -6px rgb(var(--accent-rgb) / 0.6); }
 
 .menu-toggle { display: none; margin-left: auto; background: none; border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 6px 10px; font: inherit; font-size: 0.85rem; }
 
@@ -204,7 +206,7 @@ img, svg, video { max-width: 100%; height: auto; }
 .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 
 .card {
-  display: block; padding: 20px 22px; color: var(--text);
+  position: relative; display: block; padding: 20px 22px; color: var(--text);
   background: linear-gradient(180deg, var(--panel), var(--bg-elevated));
   border: 1px solid var(--border); border-radius: var(--radius);
   transition: border-color 0.2s, transform 0.2s;
@@ -361,7 +363,17 @@ html[data-theme='light'] .prose .shiki, html[data-theme='light'] .prose .shiki s
 .prose table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 0.94rem; }
 .prose th, .prose td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
 .prose th { background: var(--panel); font-weight: 600; }
-.prose input[type='checkbox'] { accent-color: var(--accent); }
+/* Task lists: a small ring that fills like a lit planet when done. */
+.prose input[type='checkbox'] {
+  appearance: none; width: 1em; height: 1em; margin: 0 0.45em 0 0; vertical-align: -0.12em;
+  border: 1.5px solid var(--border-strong); border-radius: 50%; background: var(--panel);
+}
+.prose input[type='checkbox']:checked {
+  border-color: var(--accent);
+  background: radial-gradient(circle at 35% 35%, color-mix(in srgb, var(--accent) 55%, #fff), var(--accent) 62%);
+  box-shadow: inset 0 0 0 2px var(--panel), 0 0 8px rgb(var(--accent-rgb) / 0.45);
+}
+.prose li:has(> input[type='checkbox']:checked) { color: var(--text-muted); }
 .prose .footnotes { margin-top: 3em; font-size: 0.9rem; color: var(--text-muted); border-top: 1px solid var(--border); }
 .prose [id^='^']:target { background: var(--accent-soft); border-radius: 4px; }
 
@@ -541,9 +553,7 @@ html[data-motion='off'] *::after { animation: none !important; transition: none 
   transition: border-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-base);
 }
 .motion-toggle:hover, .theme-toggle:hover { border-color: var(--border-strong); background: var(--panel); }
-.motion-toggle svg, .theme-toggle svg { width: 18px; height: 18px; }
-.theme-toggle .sun, html[data-theme='light'] .theme-toggle .moon { display: none; }
-html[data-theme='light'] .theme-toggle .sun { display: inline; }
+.motion-toggle svg { width: 18px; height: 18px; }
 .motion-toggle .orbit { transform-origin: 12px 12px; animation: orbit 6s linear infinite; }
 .motion-toggle .slash { opacity: 0; }
 .motion-toggle[aria-pressed='false'] { color: var(--text-faint); }
@@ -603,7 +613,8 @@ html[data-vt='warp']::view-transition-new(root) { animation: warp-in 760ms var(-
 /* ---- search ------------------------------------------------------------- */
 
 .big-search { width: 100%; max-width: 560px; background: var(--panel); border: 1px solid var(--border-strong); color: var(--text); border-radius: var(--radius); padding: 14px 18px; font: inherit; }
-.big-search:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.big-search { transition: border-color var(--dur-fast), box-shadow var(--dur-base) var(--ease-out); }
+.big-search:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft), 0 0 32px -8px rgb(var(--accent-rgb) / 0.55); }
 .results { list-style: none; padding: 0; margin: 24px 0 0; max-width: 760px; }
 .results li { border-bottom: 1px solid var(--border); }
 .results a { display: block; padding: 16px 4px; color: var(--text); }
@@ -662,4 +673,86 @@ html[data-vt='warp']::view-transition-new(root) { animation: warp-in 760ms var(-
   8% { opacity: 1; }
   40% { transform: translate(-22em, 4.5em); opacity: 0; }
   100% { transform: translate(-22em, 4.5em); opacity: 0; }
+}
+
+/* Day/night theme switch (by rishichawda): night sky with a moon in the dark
+   theme, a sun and a cloud on a pale sky in the light theme. */
+.theme-toggle { position: relative; width: 54px; height: 28px; padding: 0; border-radius: 999px; overflow: hidden; border-color: var(--border-strong); }
+.theme-toggle:hover { background: none; }
+.theme-toggle .tt-sky {
+  position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(180deg, #121a2b, #1d2840);
+  transition: background var(--dur-base);
+}
+html[data-theme='light'] .theme-toggle .tt-sky { background: linear-gradient(180deg, #a9cbd6, #cfe2e6); }
+.theme-toggle .tt-stars {
+  position: absolute; top: 0; left: 0; width: 1.5px; height: 1.5px; border-radius: 50%; color: #f3ead7;
+  box-shadow: 8px 7px, 15px 17px, 21px 6px, 6px 20px 0 -0.3px, 26px 13px 0 -0.3px, 12px 11px 0 -0.4px;
+  transition: opacity var(--dur-base), transform var(--dur-base) var(--ease-out);
+  animation: twinkle 2.2s ease-in-out infinite alternate;
+}
+.theme-toggle .tt-cloud {
+  position: absolute; right: 7px; bottom: 5px; width: 18px; height: 7px; border-radius: 999px; background: #fff;
+  opacity: 0; transform: translateX(8px);
+  transition: opacity var(--dur-base), transform var(--dur-base) var(--ease-out);
+}
+.theme-toggle .tt-cloud::before { content: ''; position: absolute; left: 4px; bottom: 3px; width: 9px; height: 9px; border-radius: 50%; background: #fff; }
+html[data-theme='light'] .theme-toggle .tt-stars { opacity: 0; transform: translateY(-6px); }
+html[data-theme='light'] .theme-toggle .tt-cloud { opacity: 1; transform: none; }
+.theme-toggle .tt-knob {
+  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+  /* moon: pale disc with a few craters */
+  background:
+    radial-gradient(circle at 62% 30%, #b9b3a6 0 2px, transparent 2.5px),
+    radial-gradient(circle at 35% 62%, #b9b3a6 0 2.6px, transparent 3px),
+    radial-gradient(circle at 70% 72%, #b9b3a6 0 1.4px, transparent 1.9px),
+    #e6e2d8;
+  box-shadow: 0 0 8px rgb(230 226 216 / 0.35);
+  transform: translateX(26px);
+  transition: transform var(--dur-base) var(--ease-out), background var(--dur-base), box-shadow var(--dur-base), scale var(--dur-fast);
+}
+html[data-theme='light'] .theme-toggle .tt-knob {
+  background: radial-gradient(circle at 40% 38%, #fff4c2, #f2c75c 70%);
+  box-shadow: 0 0 0 3px rgb(255 240 190 / 0.45), 0 0 12px rgb(242 199 92 / 0.8);
+  transform: none;
+}
+.theme-toggle:hover .tt-knob { scale: 1.06; }
+
+/* Back to top (by vinodjangid07): a round button that widens on hover, the
+   arrow lifting away as the label slides in. */
+.to-top {
+  position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); z-index: 40;
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0; overflow: hidden;
+  border: 1px solid var(--border-strong); border-radius: 999px; cursor: pointer;
+  background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(8px);
+  color: var(--accent); box-shadow: 0 0 0 4px rgb(var(--accent-rgb) / 0.12), 0 8px 24px var(--shadow);
+  opacity: 0; visibility: hidden; transform: translateY(12px);
+  transition: opacity var(--dur-base), visibility var(--dur-base), transform var(--dur-base) var(--ease-out),
+    width var(--dur-base) var(--ease-out), background var(--dur-base), color var(--dur-base);
+}
+.to-top.shown { opacity: 1; visibility: visible; transform: none; }
+.to-top svg { width: 11px; fill: currentColor; transition: transform var(--dur-base) var(--ease-out); }
+.to-top-label {
+  position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap;
+  opacity: 0; transform: translateY(150%); transition: opacity var(--dur-fast), transform var(--dur-base) var(--ease-out);
+}
+.to-top:is(:hover, :focus-visible) { width: 148px; background: var(--accent); color: var(--bg); }
+.to-top:is(:hover, :focus-visible) svg { transform: translateY(-260%); }
+.to-top:is(:hover, :focus-visible) .to-top-label { opacity: 1; transform: none; }
+@media print { .to-top { display: none; } }
+
+/* Cards: a spotlight on the border (and a faint wash inside) follows the
+   pointer, tinted with the card's section colour. Position set by BaseLayout. */
+.card::before {
+  content: ''; position: absolute; inset: -1px; padding: 1px; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--glow, var(--accent)) 85%, transparent), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity var(--dur-base);
+}
+a.card:hover::before { opacity: 1; }
+a.card:hover {
+  background:
+    radial-gradient(320px circle at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--glow, var(--accent)) 9%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--panel), var(--bg-elevated));
 }
