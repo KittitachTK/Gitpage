@@ -15,14 +15,14 @@ tags:
 
 ## สรุปเนื้อหา
 
-- [[บท 7-8 Machine Learning, Bias-Variance และ Linear Regression]]
-- [[บท 8-12 Decision Tree ถึง Model Validation]]
+- [[Ch7-8 Bias-Variance, Linear Regression]]
+- [[Ch8-12 Tree, Ensemble, Clustering]]
 
 ## ข้อสอบและเฉลย
 
-- [[เฉลยแบบทดสอบ บท 7-8]]
+- [[เฉลยแบบทดสอบ Ch7-8]]
 
 ## Lab / Notebook
 
-- [[Lab P05 Gaussian Basis และ Regularization]]
-- [[Lab starter_lab (Linear Regression)]]
+- [[Lab P05 Gaussian Basis, Regularization]]
+- [[Lab P01-P04 Linear Regression]]

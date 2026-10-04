@@ -4,7 +4,7 @@ code: CP352101
 type: lab
 chapters: "8"
 related:
-  - "[[เฉลยแบบทดสอบ บท 7-8]]"
+  - "[[เฉลยแบบทดสอบ Ch7-8]]"
 tags:
   - data-science
   - CP352101

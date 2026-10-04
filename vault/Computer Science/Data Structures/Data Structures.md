@@ -15,6 +15,10 @@ tags:
 
 ## สรุปเนื้อหา
 
-- [[บทที่ 1-7 Array, Stack, Queue, Linked List, Tree]]
-- [[บทที่ 6.2-8 Double Linked List, Tree, Searching]]
-- [[บทที่ 8-11 Searching, Priority Queue, Hashing, Graph]]
+- [[Ch1-7 Array, Stack, Queue, Tree]]
+- [[Ch6-8 Doubly Linked List, BST, Search]]
+- [[Ch8-11 Search, Heap, Hashing, Graph]]
+
+## แบบฝึกหัดและงานที่ได้รับมอบหมาย
+
+- [[Assignment 5 Graph]]
