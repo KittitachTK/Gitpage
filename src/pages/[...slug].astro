@@ -83,7 +83,7 @@ const field = note.frontmatter.field ? String(note.frontmatter.field) : undefine
             </>
           ))}
         </nav>
-        <h1>{note.title}</h1>
+        <h1 data-vt-title>{note.title}</h1>
         <div class="note-meta">
           {note.status && <span class="status" data-status={note.status}>{note.status}</span>}
           {field && <span>{field}</span>}

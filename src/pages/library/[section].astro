@@ -19,7 +19,7 @@ const latest = recent(vault, 5, (n) => sec.notes.includes(n));
   <div class="container">
     <header class="page-head">
       <p class="eyebrow"><span class="section-dot" style={`--dot:${sec.color}`}></span>Library · {sec.notes.length} notes</p>
-      <h1>{sec.label}</h1>
+      <h1 data-vt-title>{sec.label}</h1>
       <p>{sec.blurb}</p>
     </header>
     <div class="section-layout">

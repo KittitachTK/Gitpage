@@ -11,6 +11,7 @@ import {
   forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY,
   type Simulation, type SimulationLinkDatum, type SimulationNodeDatum,
 } from 'd3-force';
+import { motionEnabled, onMotionChange } from './motion';
 
 export interface GNode extends SimulationNodeDatum {
   id: string;
@@ -54,7 +55,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
   const color = (section: string) => css.getPropertyValue(SECTION_VARS[section] ?? '--sec-other').trim() || '#9aa6bb';
   const textColor = css.getPropertyValue('--text').trim();
   const faint = css.getPropertyValue('--text-faint').trim();
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduced = () => !motionEnabled();
 
   const nodes: GNode[] = data.nodes.map((n) => ({ ...n }));
   const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -261,7 +262,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       if (drag.node) {
         const w = toWorld(p.x, p.y);
         drag.node.fx = w.x; drag.node.fy = w.y;
-        if (!reduced) sim.alphaTarget(0.2).restart();
+        if (!reduced()) sim.alphaTarget(0.2).restart();
         else { drag.node.x = w.x; drag.node.y = w.y; }
       } else {
         userMoved = true;
@@ -311,19 +312,25 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
   ro.observe(canvas);
   resize();
 
-  if (reduced) {
+  sim.on('tick', () => {
+    if (!userMoved) fit(); // keep the constellation framed while it settles
+    draw();
+  });
+  if (motionEnabled()) {
+    sim.tick(120); // settle off-screen so the first frame is already a constellation
+    fit();
+    sim.alpha(0.3).restart();
+  } else {
     sim.stop();
     sim.tick(300);
     fit();
     draw();
-  } else {
-    sim.tick(120); // settle off-screen so the first frame is already a constellation
-    fit();
-    sim.alpha(0.3).on('tick', () => {
-      if (!userMoved) fit(); // keep the constellation framed while it settles
-      draw();
-    });
   }
+  // Toggling motion off freezes the layout where it is.
+  const offMotion = onMotionChange((on) => {
+    if (on) sim.alpha(0.05).restart();
+    else { sim.stop(); draw(); }
+  });
 
   return {
     /** Highlight nodes whose title/tags match; empty string clears. */
@@ -334,6 +341,6 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       return filter?.size ?? nodes.length;
     },
     fit() { fit(); draw(); },
-    destroy() { sim.stop(); ro.disconnect(); },
+    destroy() { sim.stop(); ro.disconnect(); offMotion(); },
   };
 }

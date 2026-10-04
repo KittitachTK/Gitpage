@@ -38,7 +38,7 @@ const latest = recent(vault, 6);
               <span class="section-dot" style={`--dot:${s.color}`} />
               {s.notes.length} notes
             </span>
-            <h3>{s.label}</h3>
+            <h3 data-vt-title>{s.label}</h3>
             <p>{s.blurb}</p>
           </a>
         ))
@@ -86,10 +86,12 @@ const latest = recent(vault, 6);
 </style>
 
 <script>
-  // Slowly drifting starfield with a little pointer parallax; static under reduced motion.
+  import { animateWhileVisible } from '../scripts/motion';
+
+  // Slowly drifting starfield with a little pointer parallax. Runs only while visible
+  // and motion is on; otherwise a single still frame is drawn.
   const canvas = document.querySelector<HTMLCanvasElement>('.hero-sky')!;
   const ctx = canvas.getContext('2d')!;
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const stars = Array.from({ length: 520 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random(), tw: Math.random() * Math.PI * 2 }));
   let w = 0, h = 0, mx = 0, my = 0, t = 0;
 
@@ -100,10 +102,10 @@ const latest = recent(vault, 6);
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (reduced) frame();
+    draw();
   }
 
-  function frame() {
+  function draw() {
     ctx.clearRect(0, 0, w, h);
     for (const s of stars) {
       const depth = 0.2 + s.z * 0.8;
@@ -116,8 +118,6 @@ const latest = recent(vault, 6);
       ctx.arc(x, y, (bright ? 1.6 : 0.4 + depth) * 0.7, 0, Math.PI * 2);
       ctx.fill();
     }
-    t += 0.016;
-    if (!reduced) requestAnimationFrame(frame);
   }
 
   addEventListener('resize', size);
@@ -126,5 +126,8 @@ const latest = recent(vault, 6);
     my = e.clientY / innerHeight - 0.5;
   });
   size();
-  if (!reduced) frame();
+  animateWhileVisible(canvas, (_, dt) => {
+    t += dt / 1000;
+    draw();
+  }, draw);
 </script>

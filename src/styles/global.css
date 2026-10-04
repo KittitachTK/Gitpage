@@ -50,6 +50,15 @@
   --gutter: clamp(16px, 4vw, 40px);
   --header-h: 60px;
 
+  /* motion: every animation uses these, so the site's "feel" is tuned in one place */
+  --dur-fast: 180ms;
+  --dur-base: 340ms;
+  --dur-slow: 560ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-warp: cubic-bezier(0.7, 0, 0.84, 0);
+
   color-scheme: dark;
 }
 
@@ -330,8 +339,80 @@ details.callout[open] > summary.callout-title::after { content: '−'; }
 
 /* ---- reduced motion ------------------------------------------------------ */
 
+/* ---- motion off --------------------------------------------------------------
+   Default follows the OS (prefers-reduced-motion). The header toggle stores an
+   explicit choice that wins over the OS: html[data-motion='on' | 'off']. */
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  html:not([data-motion='on']) *,
+  html:not([data-motion='on']) *::before,
+  html:not([data-motion='on']) *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+html[data-motion='off'] *,
+html[data-motion='off'] *::before,
+html[data-motion='off'] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+
+.motion-toggle {
+  display: grid; place-items: center; width: 34px; height: 34px; flex: none;
+  background: none; border: 1px solid var(--border); border-radius: 50%; color: var(--accent); cursor: pointer;
+  transition: border-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-base);
+}
+.motion-toggle:hover { border-color: var(--border-strong); box-shadow: 0 0 14px rgb(127 212 255 / 0.25); }
+.motion-toggle svg { width: 18px; height: 18px; }
+.motion-toggle .orbit { transform-origin: 12px 12px; animation: orbit 6s linear infinite; }
+.motion-toggle .slash { opacity: 0; }
+.motion-toggle[aria-pressed='false'] { color: var(--text-faint); }
+.motion-toggle[aria-pressed='false'] .slash { opacity: 1; }
+.motion-toggle[aria-pressed='false'] .orbit { animation: none; }
+@keyframes orbit { to { transform: rotate(360deg); } }
+@media (max-width: 900px) {
+  .site-header .container { gap: 10px; }
+  .motion-toggle { margin-left: auto; }
+  .menu-toggle { margin-left: 0; }
+}
+@media (max-width: 520px) { .brand small { display: none; } }
+
+/* ---- page transitions (cross-document View Transitions) ------------------
+   The `@view-transition` opt-in itself is inlined in BaseLayout's <head> (an
+   external stylesheet can be applied too late on a first, cached visit and the
+   browser then aborts the transition). The inline script there skips the
+   transition whenever motion is off. Unsupported browsers navigate normally. */
+
+.site-header { view-transition-name: site-header; }
+.note-sidebar { view-transition-name: note-sidebar; }
+
+/* The header is identical on every page: keep it perfectly still. */
+::view-transition-group(site-header),
+::view-transition-old(site-header),
+::view-transition-new(site-header) { animation: none; }
+
+/* Default page change: old page lifts away, new page settles in. */
+::view-transition-old(root) { animation: vt-out var(--dur-fast) var(--ease-in) both; }
+::view-transition-new(root) { animation: vt-in var(--dur-base) var(--ease-out) both; }
+@keyframes vt-out { to { opacity: 0; transform: translateY(-6px) scale(0.995); filter: blur(2px); } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(12px); } }
+
+/* A note title morphs between a list item / card and the page heading. */
+::view-transition-group(vt-title) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); }
+::view-transition-old(vt-title),
+::view-transition-new(vt-title) { height: 100%; width: auto; object-fit: contain; object-position: left center; }
+/* Drop the old (differently sized) text quickly so it does not ghost across the morph. */
+::view-transition-old(vt-title) { animation: vt-fade-out var(--dur-fast) var(--ease-in) both; }
+::view-transition-new(vt-title) { animation: vt-fade-in var(--dur-base) var(--ease-out) both; }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+
+::view-transition-group(note-sidebar) { animation-duration: var(--dur-base); }
+
+/* Entering the Knowledge Universe: a short jump to hyperspace. */
+html[data-vt='warp']::view-transition-old(root) { animation: warp-out 520ms var(--ease-warp) both; }
+html[data-vt='warp']::view-transition-new(root) { animation: warp-in 760ms var(--ease-out) 120ms both; }
+@keyframes warp-out {
+  60% { opacity: 1; }
+  to { opacity: 0; transform: scale(1.4); filter: blur(10px) brightness(1.8); }
+}
+@keyframes warp-in {
+  from { opacity: 0; transform: scale(0.82); filter: blur(8px) brightness(1.6); }
 }
 
 /* ---- search ------------------------------------------------------------- */

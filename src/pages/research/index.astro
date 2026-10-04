@@ -31,7 +31,7 @@ const logs = all
       active.map((p) => (
         <a class="panel project card" href={noteUrl(p.note)}>
           <span class="status" data-status={p.note.status}>{p.note.status}</span>
-          <h3>{p.note.title}</h3>
+          <h3 data-vt-title>{p.note.title}</h3>
           {p.question && <p class="question">Main question: {p.question}</p>}
           <div class="stats">
             <div class="stat"><b>{p.logs.length}</b><span>Research logs</span></div>

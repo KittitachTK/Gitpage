@@ -25,7 +25,7 @@ const secs = sections(getVault());
               <span class="section-dot" style={`--dot:${s.color}`} />
               {s.notes.length} notes
             </span>
-            <h3>{s.label}</h3>
+            <h3 data-vt-title>{s.label}</h3>
             <p>{s.blurb}</p>
           </a>
         ))

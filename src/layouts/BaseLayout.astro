@@ -40,6 +40,72 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600&display=swap"
     />
+    <!-- Opt in to cross-document view transitions as early as possible (see global.css). -->
+    <style is:inline>@view-transition { navigation: auto; }</style>
+    <!--
+      Render-blocking on purpose: it must set data-motion before first paint and
+      register pageswap/pagereveal before the first rendering opportunity.
+    -->
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        // An explicit choice from the header toggle wins; otherwise follow the OS.
+        try {
+          const saved = localStorage.getItem('planktos:motion');
+          if (saved === 'on' || saved === 'off') root.dataset.motion = saved;
+        } catch {}
+        const motionOk = () =>
+          root.dataset.motion === 'on' ||
+          (root.dataset.motion !== 'off' && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+        const norm = (u) => {
+          const x = new URL(u, location.href);
+          return x.origin + x.pathname.replace(/\/?$/, '/');
+        };
+        // The element that represents page `url` here: a list item / card title linking to it.
+        const titleLinkingTo = (url) => {
+          const target = norm(url);
+          for (const a of document.querySelectorAll('a[href]')) {
+            if (norm(a.href) !== target) continue;
+            const t = a.querySelector('[data-vt-title]');
+            if (t) return t;
+          }
+          return null;
+        };
+        const ownTitle = () => document.querySelector('h1[data-vt-title]');
+        const morph = (el, cleanup) => {
+          if (!el) return;
+          el.style.viewTransitionName = 'vt-title';
+          cleanup.push(() => (el.style.viewTransitionName = ''));
+        };
+
+        // Old page: name the item that was clicked (opening) or our own heading (leaving).
+        addEventListener('pageswap', (e) => {
+          if (!e.viewTransition) return;
+          if (!motionOk()) return e.viewTransition.skipTransition();
+          const to = e.activation && e.activation.entry && e.activation.entry.url;
+          if (!to) return;
+          const cleanup = [];
+          morph(titleLinkingTo(to) || ownTitle(), cleanup);
+          e.viewTransition.ready.catch(() => {}); // aborted transitions just navigate normally
+          e.viewTransition.finished.finally(() => cleanup.forEach((f) => f()));
+        });
+
+        // New page: name the item for the page we came from (going back) or our own heading.
+        addEventListener('pagereveal', (e) => {
+          if (!e.viewTransition) return;
+          if (!motionOk()) return e.viewTransition.skipTransition();
+          const cleanup = [];
+          const from = self.navigation && navigation.activation && navigation.activation.from;
+          if (from && from.url) morph(titleLinkingTo(from.url) || ownTitle(), cleanup);
+          if (norm(location.href) === norm(root.dataset.base + 'universe')) {
+            root.dataset.vt = 'warp';
+            cleanup.push(() => delete root.dataset.vt);
+          }
+          e.viewTransition.ready.catch(() => {}); // aborted transitions just navigate normally
+          e.viewTransition.finished.finally(() => cleanup.forEach((f) => f()));
+        });
+      })();
+    </script>
     <slot name="head" />
   </head>
   <body>
@@ -54,6 +120,13 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
           <label class="sr-only" for="q">Search the archive</label>
           <input id="q" name="q" type="search" placeholder="Search the archive…  /" autocomplete="off" />
         </form>
+        <button class="motion-toggle" type="button" aria-pressed="true" aria-label="Animations on" title="Animations: on">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"></circle>
+            <g class="orbit"><ellipse cx="12" cy="12" rx="9" ry="4.2" transform="rotate(-25 12 12)"></ellipse><circle cx="20.2" cy="8.4" r="1.3" fill="currentColor" stroke="none"></circle></g>
+            <line class="slash" x1="4" y1="20" x2="20" y2="4"></line>
+          </svg>
+        </button>
         <button class="menu-toggle" type="button" aria-expanded="false">Menu</button>
       </div>
     </header>
@@ -70,6 +143,18 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
     </footer>
 
     <script>
+      import { motionEnabled, onMotionChange, setMotion } from '../scripts/motion';
+
+      const motionBtn = document.querySelector<HTMLButtonElement>('.motion-toggle')!;
+      const syncMotionBtn = (on: boolean) => {
+        motionBtn.setAttribute('aria-pressed', String(on));
+        motionBtn.setAttribute('aria-label', on ? 'Animations on' : 'Animations off');
+        motionBtn.title = on ? 'Animations: on' : 'Animations: off';
+      };
+      syncMotionBtn(motionEnabled());
+      onMotionChange(syncMotionBtn);
+      motionBtn.addEventListener('click', () => setMotion(!motionEnabled()));
+
       const header = document.querySelector<HTMLElement>('.site-header')!;
       const toggle = header.querySelector<HTMLButtonElement>('.menu-toggle')!;
       toggle.addEventListener('click', () => {

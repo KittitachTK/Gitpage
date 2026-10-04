@@ -15,7 +15,7 @@ const { notes, excerpt = false, date = 'updated' } = Astro.props;
     notes.map((n) => (
       <li>
         <a href={noteUrl(n)}>
-          <span class="t">{n.title}</span>
+          <span class="t" data-vt-title>{n.title}</span>
           <span class="p">{crumbs(n).map((c) => c.label).join(' / ') || 'Archive'}</span>
           {date && n[date] && <time class="d" datetime={isoDate(n[date])}>{fmtDate(n[date])}</time>}
           {excerpt && n.excerpt && <span class="x">{n.excerpt}</span>}
