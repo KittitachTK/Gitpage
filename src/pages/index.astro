@@ -8,29 +8,72 @@ import { getVault } from '../lib/vault/vault';
 const vault = getVault();
 const secs = sections(vault).filter((s) => s.notes.length);
 const latest = recent(vault, 6);
+const stats = [
+  { n: vault.notes.length, label: 'notes' },
+  { n: vault.graph.links.length, label: 'connections' },
+  { n: vault.tags.size, label: 'topics' },
+];
 ---
 
 <BaseLayout nav="home">
   <section class="hero">
+    <!--
+      Decide before the hero paints whether to play the opening sequence: once per
+      session, and only with motion on. Inline so there is no flash of final state.
+    -->
+    <script is:inline>
+      (function () {
+        var r = document.documentElement, seen = null;
+        var ok = r.dataset.motion === 'on' ||
+          (r.dataset.motion !== 'off' && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+        try { seen = sessionStorage.getItem('planktos:intro'); } catch (e) {}
+        if (ok && !seen) {
+          r.classList.add('home-intro');
+          try { sessionStorage.setItem('planktos:intro', '1'); } catch (e) {}
+        }
+      })();
+    </script>
+    <canvas class="hero-nebula" aria-hidden="true"></canvas>
     <canvas class="hero-sky" aria-hidden="true"></canvas>
     <div class="hero-inner container">
-      <p class="eyebrow">{SITE.tagline}</p>
-      <h1>{SITE.name}<span>{SITE.subtitle}</span></h1>
-      <p class="hero-motto">Explore the unknown</p>
-      <p class="hero-copy">{SITE.description}</p>
-      <div class="hero-actions">
+      <p class="eyebrow intro-step" style="--d:150ms">{SITE.tagline}</p>
+      <h1 aria-label={`${SITE.name} ${SITE.subtitle}`}>
+        <span class="word" aria-hidden="true">
+          {[...SITE.name].map((ch, i) => <span class="ch" style={`--i:${i}`}>{ch}</span>)}
+        </span>
+        <span class="sub intro-step" style="--d:900ms" aria-hidden="true">{SITE.subtitle}</span>
+      </h1>
+      <p class="hero-motto intro-step" style="--d:1100ms">Explore the unknown</p>
+      <p class="hero-copy intro-step" style="--d:1200ms">{SITE.description}</p>
+      <div class="hero-actions intro-step" style="--d:1300ms">
         <a class="btn" href={href('library')}>Enter archive</a>
         <a class="btn ghost" href={href('universe')}>Knowledge universe ✦</a>
       </div>
-      <p class="hero-stats">
-        {vault.notes.length} notes · {vault.graph.links.length} connections · {vault.tags.size} topics
+      <p class="hero-stats intro-step" style="--d:1400ms">
+        {stats.map((s, i) => (
+          <>
+            {i > 0 && ' · '}
+            <span data-count={s.n}>{s.n}</span> {s.label}
+          </>
+        ))}
       </p>
     </div>
   </section>
 
   <section class="container home-block">
+    <p class="eyebrow">Knowledge universe</p>
+    <a class="mini-universe" href={href('universe')} aria-label="Open the Knowledge Universe">
+      <canvas class="mini-canvas" aria-hidden="true"></canvas>
+      <span class="mini-caption">
+        <strong>{vault.notes.length} stars · {vault.graph.links.length} connections</strong>
+        <span>Every note is a star; every link, a connection. Explore →</span>
+      </span>
+    </a>
+  </section>
+
+  <section class="container home-block">
     <p class="eyebrow">Library</p>
-    <div class="grid" style="margin-top:16px">
+    <div class="grid home-cards" style="margin-top:16px">
       {
         secs.map((s) => (
           <a class="card" href={href(`library/${s.slug}`)}>
@@ -46,8 +89,8 @@ const latest = recent(vault, 6);
     </div>
   </section>
 
-  <section class="container home-block">
-    <p class="eyebrow">Recent transmissions</p>
+  <section class="container home-block home-recent">
+    <p class="eyebrow"><span class="signal" aria-hidden="true"></span>Recent transmissions</p>
     <NoteList notes={latest} excerpt />
   </section>
 </BaseLayout>
@@ -65,7 +108,9 @@ const latest = recent(vault, 6);
       radial-gradient(ellipse 50% 40% at 25% 70%, rgb(var(--accent-rgb) / 0.05), transparent 70%),
       var(--bg);
   }
-  .hero-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero-sky, .hero-nebula { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero-nebula { opacity: 0; transition: opacity 2.4s var(--ease-out); }
+  .hero-nebula:global(.ready) { opacity: 1; }
   .hero-inner { position: relative; text-align: center; padding-top: 48px; padding-bottom: 48px; }
   .hero h1 {
     font-family: var(--font-display);
@@ -76,58 +121,86 @@ const latest = recent(vault, 6);
     margin: 18px 0 0;
     line-height: 1.05;
   }
-  .hero h1 span { display: block; font-size: 0.3em; letter-spacing: 0.5em; color: var(--text-muted); margin-top: 14px; font-weight: 400; }
+  .hero h1 .word { display: block; }
+  .hero h1 .ch { display: inline-block; }
+  .hero h1 .sub { display: block; font-size: 0.3em; letter-spacing: 0.5em; color: var(--text-muted); margin-top: 14px; font-weight: 400; }
   .hero-motto { font-family: var(--font-mono); letter-spacing: 0.4em; text-transform: uppercase; font-size: 0.78rem; color: var(--accent); margin: 40px 0 14px; }
   .hero-copy { max-width: 44ch; margin: 0 auto; color: var(--text-muted); }
   .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 36px; }
   .btn.ghost { border-color: var(--border); background: transparent; color: var(--text-muted); }
-  .hero-stats { margin-top: 28px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-faint); letter-spacing: 0.1em; }
+  .hero-stats { margin-top: 28px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-faint); letter-spacing: 0.1em; font-variant-numeric: tabular-nums; }
   .home-block { margin-top: 72px; }
+
+  /* ---- opening sequence (html.home-intro, once per session) ---------------- */
+  :global(html.home-intro) .hero-sky { animation: sky-in 1.4s var(--ease-out) both; }
+  :global(html.home-intro) .hero h1 .ch {
+    animation: letter-in 900ms var(--ease-out) both;
+    animation-delay: calc(260ms + var(--i) * 70ms);
+  }
+  :global(html.home-intro) .hero h1 { animation: tracking-in 1.6s var(--ease-out) 200ms both; }
+  :global(html.home-intro) .intro-step { animation: rise-in 800ms var(--ease-out) both; animation-delay: var(--d, 0ms); }
+  @keyframes sky-in { from { opacity: 0; } }
+  @keyframes letter-in { from { opacity: 0; transform: translateY(0.3em); filter: blur(8px); } }
+  @keyframes tracking-in { from { letter-spacing: 0.62em; padding-left: 0.62em; } }
+  @keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
+
+  /* ---- mini universe ---------------------------------------------------------- */
+  .mini-universe {
+    position: relative; display: block; margin-top: 16px; height: 340px;
+    border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+    background: radial-gradient(ellipse at 50% 45%, var(--panel), var(--bg) 75%);
+    color: var(--text);
+    transition: border-color var(--dur-base);
+  }
+  .mini-universe:hover { border-color: var(--border-strong); text-decoration: none; }
+  .mini-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .mini-caption {
+    position: absolute; left: 20px; bottom: 18px; display: grid; gap: 2px; pointer-events: none;
+    font-size: 0.86rem; color: var(--text-muted);
+  }
+  .mini-caption strong { font-family: var(--font-mono); font-weight: 400; font-size: 0.75rem; letter-spacing: 0.12em; color: var(--text-faint); text-transform: uppercase; }
+  @media (max-width: 640px) { .mini-universe { height: 260px; } }
+
+  /* ---- "receiving" signal ------------------------------------------------------ */
+  .signal { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 10px; vertical-align: middle; animation: signal 2.6s ease-in-out infinite; }
+  @keyframes signal { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 </style>
 
 <script>
-  import { animateWhileVisible } from '../scripts/motion';
+  import { countUp, motionEnabled, reveal } from '../scripts/motion';
+  import { mountStarfield } from '../scripts/starfield';
+  import { mountNebula } from '../scripts/nebula';
+  import { mountGraph } from '../scripts/graph';
 
-  // Slowly drifting starfield with a little pointer parallax. Runs only while visible
-  // and motion is on; otherwise a single still frame is drawn.
-  const canvas = document.querySelector<HTMLCanvasElement>('.hero-sky')!;
-  const ctx = canvas.getContext('2d')!;
-  const stars = Array.from({ length: 520 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random(), tw: Math.random() * Math.PI * 2 }));
-  let w = 0, h = 0, mx = 0, my = 0, t = 0;
+  const sky = mountStarfield(document.querySelector<HTMLCanvasElement>('.hero-sky')!);
+  mountNebula(document.querySelector<HTMLCanvasElement>('.hero-nebula')!, sky.parallax);
 
-  function size() {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    w = canvas.clientWidth;
-    h = canvas.clientHeight;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw();
+  // Stats count up as the opening sequence reaches them.
+  if (document.documentElement.classList.contains('home-intro')) {
+    document.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => countUp(el, Number(el.dataset.count), 1400, 1400));
   }
 
-  function draw() {
-    ctx.clearRect(0, 0, w, h);
-    for (const s of stars) {
-      const depth = 0.2 + s.z * 0.8;
-      const x = (((s.x * w + t * 4 * depth + mx * 18 * depth) % w) + w) % w;
-      const y = s.y * h + my * 12 * depth;
-      const a = 0.25 + 0.55 * depth * (0.75 + 0.25 * Math.sin(s.tw + t * 2));
-      const bright = s.z > 0.97;
-      ctx.fillStyle = bright ? `rgba(232,212,172,${a})` : `rgba(230,226,216,${a})`; // pale gold / warm white
-      ctx.beginPath();
-      ctx.arc(x, y, (bright ? 1.6 : 0.4 + depth) * 0.7, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
+  reveal(document.querySelectorAll<HTMLElement>('.home-cards .card'));
+  reveal(document.querySelectorAll<HTMLElement>('.home-recent .note-list li'), 90);
 
-  addEventListener('resize', size);
-  addEventListener('pointermove', (e) => {
-    mx = e.clientX / innerWidth - 0.5;
-    my = e.clientY / innerHeight - 0.5;
-  });
-  size();
-  animateWhileVisible(canvas, (_, dt) => {
-    t += dt / 1000;
-    draw();
-  }, draw);
+  // The mini universe loads its data only when it comes near the viewport.
+  const base = document.documentElement.dataset.base!;
+  const mini = document.querySelector<HTMLCanvasElement>('.mini-canvas')!;
+  const io = new IntersectionObserver(([e]) => {
+    if (!e.isIntersecting) return;
+    io.disconnect();
+    fetch(`${base}graph.json`)
+      .then((r) => r.json())
+      .then((data) => mountGraph(mini, data, {
+        base,
+        preview: true,
+        galaxies: true,
+        intro: 'bang',
+        ambient: true,
+        drift: motionEnabled() ? 0.035 : 0,
+        systemLabels: true,
+        labelDegree: 99,
+      }));
+  }, { rootMargin: '200px' });
+  io.observe(mini);
 </script>

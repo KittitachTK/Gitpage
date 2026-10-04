@@ -342,6 +342,11 @@ details.callout[open] > summary.callout-title::after { content: '−'; }
 
 /* ---- reduced motion ------------------------------------------------------ */
 
+/* ---- scroll reveal (added by motion.ts only when motion is on) ------------- */
+
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out) !important; }
+.reveal.revealed { opacity: 1; transform: none; }
+
 /* ---- motion off --------------------------------------------------------------
    Default follows the OS (prefers-reduced-motion). The header toggle stores an
    explicit choice that wins over the OS: html[data-motion='on' | 'off']. */

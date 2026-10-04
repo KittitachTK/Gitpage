@@ -44,6 +44,51 @@ export function setMotion(on: boolean) {
 }
 
 /**
+ * Reveal elements as they scroll into view, staggered within each batch.
+ * Content is only hidden once this runs with motion on, so it never stays
+ * hidden without JavaScript or with motion off.
+ */
+export function reveal(elements: Iterable<HTMLElement>, stagger = 70) {
+  const list = [...elements];
+  if (!motionEnabled() || !('IntersectionObserver' in window)) return;
+  const show = (el: HTMLElement) => {
+    el.classList.add('revealed');
+    // Hand the element back to its own transitions (e.g. card hover) afterwards.
+    const done = () => {
+      el.classList.remove('reveal', 'revealed');
+      el.style.transitionDelay = '';
+    };
+    el.addEventListener('transitionend', done, { once: true });
+    setTimeout(done, 1400);
+  };
+  for (const el of list) el.classList.add('reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.filter((e) => e.isIntersecting).forEach((e, i) => {
+      const el = e.target as HTMLElement;
+      el.style.transitionDelay = `${i * stagger}ms`;
+      io.unobserve(el);
+      requestAnimationFrame(() => show(el));
+    });
+  }, { rootMargin: '0px 0px -8% 0px' });
+  list.forEach((el) => io.observe(el));
+  // Turning motion off mid-way shows everything at once.
+  onMotionChange((on) => { if (!on) list.forEach((el) => { io.unobserve(el); el.classList.remove('reveal', 'revealed'); el.style.transitionDelay = ''; }); });
+}
+
+/** Count a number up from zero (text content), easing out. */
+export function countUp(el: HTMLElement, to: number, ms = 1200, delay = 0) {
+  if (!motionEnabled()) return;
+  el.textContent = '0';
+  const start = performance.now() + delay;
+  const tick = (t: number) => {
+    const p = Math.max(0, Math.min(1, (t - start) / ms));
+    el.textContent = String(Math.round(to * (1 - Math.pow(1 - p, 3))));
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+/**
  * Run an animation loop only while it can be seen: motion enabled, element on
  * screen and the tab visible. `frame` receives the elapsed time in ms.
  * Returns a disposer.

@@ -51,8 +51,10 @@ export interface GraphOptions {
   intro?: 'bang' | 'fade';
   /** Twinkling stars and light travelling along links. */
   ambient?: boolean;
-  /** Very slow rotation of the whole universe. */
-  drift?: boolean;
+  /** Very slow rotation of the whole universe (true, or a speed in rad/s). */
+  drift?: boolean | number;
+  /** Decorative preview: no zoom/pan/drag (never captures page scroll); a click opens the Universe. */
+  preview?: boolean;
   /** Name each star system (course folder). */
   systemLabels?: boolean;
   onHover?(node: GNode | null): void;
@@ -465,7 +467,8 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
     stepCamera();
     stepHighlights(dt);
     if (opts.drift) {
-      const target = hover || drag || filter || camera || leaving ? 0 : 0.0055; // rad/s ≈ one turn / 19 min
+      const speed = typeof opts.drift === 'number' ? opts.drift : 0.0055; // rad/s ≈ one turn / 19 min
+      const target = hover || drag || filter || camera || leaving ? 0 : speed;
       rotSpeed += (target - rotSpeed) * approach(dt, 600);
       rot += rotSpeed * dt / 1000;
     }
@@ -520,6 +523,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
 
   canvas.addEventListener('pointerdown', (e) => {
     const p = local(e);
+    if (opts.preview) { drag = { node: null, sx: p.x, sy: p.y, vx: view.x, vy: view.y, moved: false }; return; }
     pointers.set(e.pointerId, p);
     canvas.setPointerCapture(e.pointerId);
     if (pointers.size === 2) {
@@ -542,7 +546,9 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       invalidate();
       return;
     }
-    if (drag) {
+    if (drag && opts.preview) {
+      if (Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8) drag.moved = true;
+    } else if (drag) {
       const dx = p.x - drag.sx, dy = p.y - drag.sy;
       if (Math.hypot(dx, dy) > 4) { drag.moved = true; takeControl(); }
       if (!drag.moved) return;
@@ -560,7 +566,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
     const n = pick(p.x, p.y);
     if (n !== hover) {
       hover = n;
-      canvas.style.cursor = n ? 'pointer' : 'grab';
+      canvas.style.cursor = n || opts.preview ? 'pointer' : 'grab';
       opts.onHover?.(n);
       invalidate();
     }
@@ -570,6 +576,13 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
     if (!drag) return;
+    if (opts.preview) {
+      // Inside a link the link itself navigates (keyboard-accessible, view transition).
+      const go = !drag.moved && e.type === 'pointerup' && !canvas.closest('a');
+      drag = null;
+      if (go) window.location.href = opts.base + 'universe';
+      return;
+    }
     const { node, moved } = drag;
     if (node && moved) {
       // Keep the new position as the star's resting place.
@@ -587,7 +600,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
     if (!drag && hover) { hover = null; opts.onHover?.(null); invalidate(); }
   });
 
-  canvas.addEventListener('wheel', (e) => {
+  if (!opts.preview) canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
     const p = local(e);
     takeControl();
