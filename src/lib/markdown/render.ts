@@ -16,6 +16,7 @@ import { getVault, type Vault } from '../vault/vault';
 import { remarkCallouts } from './callouts';
 import { remarkCitations } from './citations';
 import { remarkMermaid, remarkObsidian, type RenderContext } from './obsidian';
+import { rehypeCollectTex, rehypeMathjaxSvg, rehypeTaskLabels } from './mathjax-svg';
 import { stripComments } from './util';
 
 export interface RenderedNote {
@@ -60,7 +61,10 @@ const toHtml = unified()
   .use(remarkRehype, { allowDangerousHtml: true, footnoteLabel: 'Footnotes' })
   .use(rehypeRaw)
   .use(rehypeSlug)
+  .use(rehypeCollectTex)
   .use(rehypeMathjax, { tex: { tags: 'ams' } })
+  .use(rehypeMathjaxSvg)
+  .use(rehypeTaskLabels)
   .use(rehypeShiki, {
     theme: 'github-dark-dimmed',
     lazy: true,

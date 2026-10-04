@@ -25,7 +25,10 @@ const rendered = await renderNote(note, vault);
 
 // The page header already shows the title: drop a leading `# Title` that repeats it.
 const firstH1 = note.headings[0]?.depth === 1 && note.headings[0].text === note.title;
-const html = firstH1 ? rendered.html.replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>/, '') : rendered.html;
+// (The hoisted MathJax glyph store, if any, comes first and must be kept.)
+const html = firstH1
+  ? rendered.html.replace(/^(\s*<svg class="mjx-glyphs"[\s\S]*?<\/svg>)?\s*<h1[^>]*>[\s\S]*?<\/h1>/, '$1')
+  : rendered.html;
 // Many notes use `#` for major parts after the title, so the TOC starts at the
 // shallowest heading level present (excluding the title H1) and shows two levels.
 const tocHeadings = firstH1 ? note.headings.slice(1) : note.headings;
@@ -58,7 +61,7 @@ const bib = rendered.citations.map((k) => vault.bib.get(k)!).filter(Boolean);
 const field = note.frontmatter.field ? String(note.frontmatter.field) : undefined;
 ---
 
-<BaseLayout title={note.title} description={note.excerpt}>
+<BaseLayout title={note.title} description={note.excerpt || `${note.title} — ${note.folders.join(' / ') || 'Knowledge archive'}`}>
   <div class="note-layout">
     <aside class="note-sidebar tree" aria-label="Section contents">
       {

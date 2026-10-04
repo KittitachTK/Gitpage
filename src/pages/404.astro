@@ -4,14 +4,40 @@ import { href } from '../lib/config';
 ---
 
 <BaseLayout title="Lost in space">
-  <div class="container">
-    <header class="page-head" style="text-align:center;padding-top:120px">
+  <section class="lost">
+    <canvas class="lost-sky" aria-hidden="true"></canvas>
+    <div class="lost-inner container">
+      <span class="drifter" aria-hidden="true">✦</span>
       <p class="eyebrow">404 · signal lost</p>
       <h1>This region of space is empty</h1>
-      <p style="margin:0 auto">The note may have been renamed or moved in the vault.</p>
-      <p style="margin-top:32px">
+      <p class="lost-copy">The note may have been renamed or moved in the vault.</p>
+      <p class="lost-actions">
         <a class="btn" href={href('search')}>Search the archive</a>
+        <a class="btn ghost" href={href('')}>Return home</a>
       </p>
-    </header>
-  </div>
+    </div>
+  </section>
 </BaseLayout>
+
+<style>
+  .lost { position: relative; min-height: calc(100vh - var(--header-h) - 120px); display: grid; place-items: center; overflow: hidden; }
+  .lost-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .lost-inner { position: relative; text-align: center; padding: 80px var(--gutter); }
+  .lost h1 { font-family: var(--font-display); font-weight: 500; font-size: clamp(1.8rem, 5vw, 2.8rem); margin: 10px 0 12px; }
+  .lost-copy { color: var(--text-muted); margin: 0 auto; max-width: 44ch; }
+  .lost-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 32px; }
+  .btn.ghost { border-color: var(--border); background: transparent; color: var(--text-muted); }
+  /* A lone star adrift. */
+  .drifter { display: inline-block; font-size: 2.4rem; color: var(--accent); margin-bottom: 20px; animation: drift 9s ease-in-out infinite; }
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.9; }
+    25% { transform: translate(14px, -10px) rotate(25deg); opacity: 0.6; }
+    50% { transform: translate(-6px, -18px) rotate(70deg); opacity: 1; }
+    75% { transform: translate(-16px, -4px) rotate(110deg); opacity: 0.7; }
+  }
+</style>
+
+<script>
+  import { mountStarfield } from '../scripts/starfield';
+  mountStarfield(document.querySelector<HTMLCanvasElement>('.lost-sky')!);
+</script>

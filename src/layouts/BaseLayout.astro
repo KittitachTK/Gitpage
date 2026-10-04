@@ -10,7 +10,8 @@ interface Props {
   nav?: 'home' | 'universe' | 'library' | 'research' | 'ideas' | 'tags' | 'about' | 'search';
 }
 
-const { title, description = SITE.description, nav } = Astro.props;
+const { title, nav } = Astro.props;
+const description = Astro.props.description || SITE.description;
 const pageTitle = title ? `${title} — ${SITE.name}` : `${SITE.name} · ${SITE.subtitle}`;
 const links: { key: Props['nav']; label: string; url: string }[] = [
   { key: 'universe', label: 'Universe', url: href('universe') },
@@ -154,6 +155,21 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
       syncMotionBtn(motionEnabled());
       onMotionChange(syncMotionBtn);
       motionBtn.addEventListener('click', () => setMotion(!motionEnabled()));
+
+      // Buttons: a soft ripple from where they were pressed.
+      document.addEventListener('pointerdown', (e) => {
+        const btn = (e.target as Element).closest?.<HTMLElement>('.btn');
+        if (!btn || !motionEnabled()) return;
+        const r = btn.getBoundingClientRect();
+        btn.style.setProperty('--rx', `${e.clientX - r.left}px`);
+        btn.style.setProperty('--ry', `${e.clientY - r.top}px`);
+        btn.classList.remove('rippling');
+        void btn.offsetWidth; // restart the animation
+        btn.classList.add('rippling');
+      });
+      document.addEventListener('animationend', (e) => {
+        if ((e.target as Element).classList?.contains('rippling')) (e.target as Element).classList.remove('rippling');
+      });
 
       const header = document.querySelector<HTMLElement>('.site-header')!;
       const toggle = header.querySelector<HTMLButtonElement>('.menu-toggle')!;

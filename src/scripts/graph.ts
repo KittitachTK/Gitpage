@@ -460,9 +460,15 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
   /** Redraw now if the loop is not running (the loop redraws every frame). */
   const invalidate = () => { if (!running) draw(); };
 
+  // Full frame rate while something is happening; ~30 fps for idle ambience.
+  let lastInput = -1e9;
+  let sinceDraw = 0;
+  const poke = () => { lastInput = now; };
+
   function frame(_t: number, dt: number) {
     running = true;
     now += dt;
+    sinceDraw += dt;
     stepIntro();
     stepCamera();
     stepHighlights(dt);
@@ -472,6 +478,9 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       rotSpeed += (target - rotSpeed) * approach(dt, 600);
       rot += rotSpeed * dt / 1000;
     }
+    const busy = intro || camera || drag || pinch || leaving || now - lastInput < 900;
+    if (!busy && sinceDraw < 33) return;
+    sinceDraw = 0;
     draw();
   }
 
@@ -522,6 +531,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
   const takeControl = () => { userMoved = true; camera = null; finishIntro(); };
 
   canvas.addEventListener('pointerdown', (e) => {
+    poke();
     const p = local(e);
     if (opts.preview) { drag = { node: null, sx: p.x, sy: p.y, vx: view.x, vy: view.y, moved: false }; return; }
     pointers.set(e.pointerId, p);
@@ -537,6 +547,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
   });
 
   canvas.addEventListener('pointermove', (e) => {
+    poke();
     const p = local(e);
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
     if (pinch && pointers.size === 2) {
@@ -597,11 +608,13 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
   canvas.addEventListener('pointerleave', () => {
+    poke();
     if (!drag && hover) { hover = null; opts.onHover?.(null); invalidate(); }
   });
 
   if (!opts.preview) canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
+    poke();
     const p = local(e);
     takeControl();
     const k = Math.min(6, Math.max(0.1, view.k * Math.exp(-e.deltaY * 0.0015)));
@@ -640,6 +653,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
   return {
     /** Highlight nodes whose title/tags match and frame them; empty string clears. */
     setFilter(q: string) {
+      poke();
       const s = q.trim().toLowerCase();
       filter = s ? new Set(nodes.filter((n) => n.title.toLowerCase().includes(s) || n.tags.some((t) => t.toLowerCase().includes(s))).map((n) => n.id)) : null;
       const matched = filter ? nodes.filter((n) => filter!.has(n.id)) : nodes;

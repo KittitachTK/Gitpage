@@ -67,6 +67,22 @@ function buildCard(doc: Document, hash: string): HTMLElement | null {
   if (blocks.length > MAX_BLOCKS) body.insertAdjacentHTML('beforeend', '<p class="preview-more">…</p>');
   card.append(body);
 
+  // Equations reference shared glyph paths (see mathjax-svg.ts); bring over any this page lacks.
+  const glyphs = doc.querySelectorAll('svg.mjx-glyphs path[id]');
+  if (glyphs.length && doc !== document) {
+    let store = document.querySelector('svg.mjx-glyphs defs');
+    if (!store) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'mjx-glyphs');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden');
+      store = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      svg.append(store);
+      document.body.prepend(svg);
+    }
+    for (const g of glyphs) if (!document.getElementById(g.id)) store.append(document.importNode(g, true));
+  }
+
   // MathJax SVG relies on a small stylesheet; borrow it once if this page lacks it.
   if (!document.getElementById('preview-mjx-style')) {
     const mjx = [...doc.querySelectorAll('style')].find((s) => s.textContent?.includes('mjx-container'));

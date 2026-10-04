@@ -46,7 +46,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     list.innerHTML = hits
       .slice(0, 50)
       .map(
-        (h) => `<li><a href="${base}${h.slug}">
+        (h, i) => `<li style="--i:${i}"><a href="${base}${h.slug}">
           <span class="t">${highlight(h.title, q)}</span>
           <span class="p">${escapeHtml(h.path || 'Archive')}</span>
           <span class="s">${highlight(snippet(h.text || h.excerpt, q), q)}</span>

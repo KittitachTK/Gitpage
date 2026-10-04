@@ -46,11 +46,20 @@ export function mountStarfield(canvas: HTMLCanvasElement) {
       const y = s.y * h + par.y * 14 * depth;
       const a = 0.25 + 0.55 * depth * (0.75 + 0.25 * Math.sin(s.tw + t * 2));
       const bright = s.z > 0.97;
-      ctx.fillStyle = bright ? `rgba(232,212,172,${a})` : `rgba(230,226,216,${a})`; // pale gold / warm white
-      ctx.beginPath();
-      ctx.arc(x, y, (bright ? 1.6 : 0.4 + depth) * 0.7, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.globalAlpha = a;
+      if (bright) {
+        ctx.fillStyle = 'rgb(232,212,172)'; // pale gold
+        ctx.beginPath();
+        ctx.arc(x, y, 1.1, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Sub-pixel stars: a square is indistinguishable from a circle and far cheaper.
+        const r = (0.4 + depth) * 0.7;
+        ctx.fillStyle = 'rgb(230,226,216)'; // warm white
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      }
     }
+    ctx.globalAlpha = 1;
     for (const m of meteors) {
       const k = m.t / m.life;
       const fade = Math.sin(Math.PI * Math.min(1, k)); // in and out
@@ -81,7 +90,10 @@ export function mountStarfield(canvas: HTMLCanvasElement) {
   }
 
   size();
+  // Stars drift ~4 px/s: 30 fps is plenty, except while a meteor streaks across.
+  let sinceDraw = 0;
   animateWhileVisible(canvas, (_, dt) => {
+    sinceDraw += dt;
     const s = dt / 1000;
     t += s;
     par.x += (target.x - par.x) * Math.min(1, s * 3);
@@ -90,6 +102,8 @@ export function mountStarfield(canvas: HTMLCanvasElement) {
     if (nextMeteor <= 0) { spawnMeteor(); nextMeteor = 8 + Math.random() * 7; }
     for (const m of meteors) { m.t += s; m.x += m.vx * s; m.y += m.vy * s; }
     meteors = meteors.filter((m) => m.t < m.life);
+    if (!meteors.length && sinceDraw < 33) return;
+    sinceDraw = 0;
     draw();
   }, () => { meteors = []; draw(); });
 
