@@ -119,7 +119,11 @@ function stripInlineProse(md: string): string {
     .replace(/!?\[\[([^[\]|]+?)(?:\|([^[\]]+?))?\]\]/g, (_, t: string, a?: string) => a ?? t.split('#')[0])
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/[*_~=`]{1,3}([^*_~=`]+)[*_~=`]{1,3}/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/(\*\*|~~|==)(.+?)\1/g, '$2')
+    .replace(/\*([^*\s][^*]*?)\*/g, '$1')
+    // `_` is emphasis only at word boundaries: `starter_lab.ipynb` keeps its underscore.
+    .replace(/(?<![\p{L}\p{N}])__?([^_]+?)__?(?![\p{L}\p{N}])/gu, '$1')
     .replace(/<[^>]+>/g, '');
 }
 

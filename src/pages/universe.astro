@@ -66,11 +66,20 @@ const secs = sections(vault).filter((s) => s.notes.length);
         starfield: true,
         galaxies: true,
         labelDegree: 4,
+        intro: 'bang',
+        ambient: true,
+        drift: true,
+        systemLabels: true,
         onHover: (n) => (hoverEl.textContent = n ? n.title : ''),
       });
+      // Debounced so the camera glides to the result instead of jittering per keystroke.
+      let timer: number | undefined;
       input.addEventListener('input', () => {
-        const n = graph.setFilter(input.value);
-        stats.textContent = input.value.trim() ? `${n} matching stars` : total;
+        clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          const n = graph.setFilter(input.value);
+          stats.textContent = input.value.trim() ? `${n} matching stars` : total;
+        }, 160);
       });
     });
 </script>
