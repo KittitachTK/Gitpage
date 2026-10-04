@@ -55,6 +55,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
   const color = (section: string) => css.getPropertyValue(SECTION_VARS[section] ?? '--sec-other').trim() || '#9aa6bb';
   const textColor = css.getPropertyValue('--text').trim();
   const faint = css.getPropertyValue('--text-faint').trim();
+  const linkColor = css.getPropertyValue('--border-strong').trim() || '#2d3543';
   const reduced = () => !motionEnabled();
 
   const nodes: GNode[] = data.nodes.map((n) => ({ ...n }));
@@ -144,7 +145,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       const x = ((s.x * width + view.x * s.z) % width + width) % width;
       const y = ((s.y * height + view.y * s.z) % height + height) % height;
       ctx.globalAlpha = s.a;
-      ctx.fillStyle = '#cfd8ea';
+      ctx.fillStyle = '#e6e2d8';
       ctx.fillRect(x, y, s.r, s.r);
     }
     ctx.globalAlpha = 1;
@@ -155,8 +156,8 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       const pa = toScreen(a), pb = toScreen(b);
       const hot = active && (a === active || b === active);
       const dim = filter && !(filter.has(a.id) && filter.has(b.id));
-      ctx.strokeStyle = hot ? color(active!.section) : 'rgba(126,137,156,1)';
-      ctx.globalAlpha = hot ? 0.8 : dim ? 0.04 : active ? 0.08 : 0.22;
+      ctx.strokeStyle = hot ? color(active!.section) : linkColor;
+      ctx.globalAlpha = hot ? 0.75 : dim ? 0.08 : active ? 0.15 : 0.6;
       ctx.lineWidth = hot ? 1.4 : 0.8;
       ctx.beginPath();
       ctx.moveTo(pa.x, pa.y);
@@ -170,14 +171,14 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       const c = color(n.section);
       const lit = isLit(n);
       ctx.globalAlpha = lit ? 1 : 0.14;
-      const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 4);
+      const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.6);
       glow.addColorStop(0, c);
       glow.addColorStop(1, 'transparent');
-      ctx.globalAlpha = lit ? 0.35 : 0.05;
+      ctx.globalAlpha = lit ? 0.16 : 0.03;
       ctx.fillStyle = glow;
-      ctx.beginPath(); ctx.arc(p.x, p.y, r * 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.6, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = lit ? 1 : 0.2;
-      ctx.fillStyle = n.id === opts.focus ? '#ffffff' : c;
+      ctx.fillStyle = n.id === opts.focus ? textColor : c;
       ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
     }
 

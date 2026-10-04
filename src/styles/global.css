@@ -5,40 +5,43 @@
    ========================================================================== */
 
 :root {
-  --bg: #02040a;
-  --bg-elevated: #050912;
-  --panel: #080d17;
-  --panel-2: #0c1322;
-  --border: #162036;
-  --border-strong: #243150;
-  --text: #e8edf5;
-  --text-muted: #a9b3c4;
-  --text-faint: #7e899c;
-  --accent: #7fd4ff;          /* cyan */
-  --accent-2: #a99bff;        /* blue-violet */
-  --accent-soft: rgb(127 212 255 / 0.12);
-  --mark: rgb(169 155 255 / 0.28);
-  --danger: #ff7a8a;
+  /* "Observatory" palette: deep space as an astrophotograph, not neon —
+     ink-black sky, warm starlight text, muted gold accent, dusty nebula tones. */
+  --bg: #07090e;
+  --bg-elevated: #0b0e15;
+  --panel: #10141c;
+  --panel-2: #151a24;
+  --border: #1f2531;
+  --border-strong: #2d3543;
+  --text: #e6e2d8;            /* warm starlight */
+  --text-muted: #aba69b;
+  --text-faint: #858076;
+  --accent: #d6b98c;          /* pale starlight gold */
+  --accent-rgb: 214 185 140;
+  --accent-2: #a9a3c6;        /* dusty nebula lavender */
+  --accent-soft: rgb(var(--accent-rgb) / 0.1);
+  --mark: rgb(169 163 198 / 0.24);
+  --danger: #d98a84;
 
   /* knowledge-universe sector colours (also used for section badges) */
-  --sec-mathematics: #7fd4ff;
-  --sec-physics: #a99bff;
-  --sec-computer-science: #6ee7b7;
-  --sec-research: #ffc46b;
-  --sec-ideas: #ff8fc7;
-  --sec-other: #9aa6bb;
+  --sec-mathematics: #8fa8c4;        /* steel blue */
+  --sec-physics: #a99fc6;            /* lavender */
+  --sec-computer-science: #8db5a2;   /* sage */
+  --sec-research: #d2b07c;           /* amber */
+  --sec-ideas: #c99aa2;              /* dusty rose */
+  --sec-other: #8e939c;
 
   /* callout families */
-  --c-info: #7fd4ff;
-  --c-success: #6ee7b7;
-  --c-warning: #ffc46b;
-  --c-danger: #ff7a8a;
-  --c-example: #a99bff;
-  --c-quote: #9aa6bb;
-  --c-definition: #6ec8ff;
-  --c-theorem: #a99bff;
-  --c-proof: #7e899c;
-  --c-conjecture: #ffb86b;
+  --c-info: #8fa8c4;
+  --c-success: #8db5a2;
+  --c-warning: #d2b07c;
+  --c-danger: #d98a84;
+  --c-example: #a99fc6;
+  --c-quote: #8e939c;
+  --c-definition: #86afb8;
+  --c-theorem: #a99fc6;
+  --c-proof: #858076;
+  --c-conjecture: #d4a27a;
 
   --font-sans: 'Inter', 'IBM Plex Sans Thai', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'IBM Plex Sans Thai', var(--font-sans);
@@ -101,7 +104,7 @@ img, svg, video { max-width: 100%; height: auto; }
 .site-header {
   position: sticky; top: 0; z-index: 50;
   height: var(--header-h);
-  background: rgb(2 4 10 / 0.78);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -161,7 +164,7 @@ a.card:hover { text-decoration: none; border-color: var(--border-strong); transf
 .card p { margin: 0; color: var(--text-muted); font-size: 0.92rem; line-height: 1.55; }
 .card .count { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-faint); }
 
-.section-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--dot, var(--sec-other)); box-shadow: 0 0 10px var(--dot, var(--sec-other)); margin-right: 8px; vertical-align: middle; }
+.section-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--dot, var(--sec-other)); margin-right: 8px; vertical-align: middle; }
 
 .note-list { list-style: none; margin: 0; padding: 0; }
 .note-list li { border-bottom: 1px solid var(--border); }
@@ -174,7 +177,7 @@ a.card:hover { text-decoration: none; border-color: var(--border-strong); transf
 
 .status { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); border: 1px solid var(--border-strong); border-radius: 999px; padding: 2px 10px; }
 .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); }
-.status[data-status='active']::before { background: #6ee7b7; box-shadow: 0 0 8px #6ee7b7; }
+.status[data-status='active']::before { background: var(--sec-computer-science); }
 .status[data-status='studying']::before { background: var(--accent); }
 .status[data-status='complete']::before { background: var(--accent-2); }
 .status[data-status='seed']::before, .status[data-status='draft']::before { background: var(--c-warning); }
@@ -182,8 +185,8 @@ a.card:hover { text-decoration: none; border-color: var(--border-strong); transf
 .tag-chip { display: inline-block; font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; margin: 0 6px 6px 0; }
 .tag-chip:hover { color: var(--accent); border-color: var(--border-strong); text-decoration: none; }
 
-.btn { display: inline-block; font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text); border: 1px solid var(--border-strong); padding: 12px 28px; border-radius: 999px; background: rgb(127 212 255 / 0.04); transition: all 0.25s; }
-.btn:hover { text-decoration: none; border-color: var(--accent); box-shadow: 0 0 24px rgb(127 212 255 / 0.25); }
+.btn { display: inline-block; font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text); border: 1px solid var(--border-strong); padding: 12px 28px; border-radius: 999px; background: rgb(var(--accent-rgb) / 0.04); transition: all 0.25s; }
+.btn:hover { text-decoration: none; border-color: var(--accent); background: rgb(var(--accent-rgb) / 0.08); }
 
 /* ---- note page layout ---------------------------------------------------- */
 
@@ -234,7 +237,7 @@ a.card:hover { text-decoration: none; border-color: var(--border-strong); transf
 .tree a:hover { color: var(--text); text-decoration: none; }
 .tree a[aria-current='page'] { color: var(--accent); }
 
-.local-graph { width: 100%; aspect-ratio: 1; border: 1px solid var(--border); border-radius: var(--radius); background: radial-gradient(circle at 50% 40%, #0b1426, var(--bg)); display: block; cursor: grab; }
+.local-graph { width: 100%; aspect-ratio: 1; border: 1px solid var(--border); border-radius: var(--radius); background: radial-gradient(circle at 50% 40%, var(--panel), var(--bg)); display: block; cursor: grab; }
 
 .backlinks { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); }
 .backlinks h2, .bibliography h2, .connected h2 { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-faint); font-weight: 400; }
@@ -279,7 +282,7 @@ a.card:hover { text-decoration: none; border-color: var(--border-strong); transf
 .prose .footnotes { margin-top: 3em; font-size: 0.9rem; color: var(--text-muted); border-top: 1px solid var(--border); }
 .prose [id^='^']:target { background: var(--accent-soft); border-radius: 4px; }
 
-.prose a.wikilink { color: var(--accent); border-bottom: 1px solid rgb(127 212 255 / 0.3); }
+.prose a.wikilink { color: var(--accent); border-bottom: 1px solid rgb(var(--accent-rgb) / 0.3); }
 .prose a.wikilink:hover { text-decoration: none; border-bottom-color: var(--accent); }
 .prose a.tag { font-family: var(--font-mono); font-size: 0.85em; background: var(--accent-soft); padding: 1px 8px; border-radius: 999px; }
 .prose a.citation { color: var(--accent-2); }
@@ -357,7 +360,7 @@ html[data-motion='off'] *::after { animation: none !important; transition: none 
   background: none; border: 1px solid var(--border); border-radius: 50%; color: var(--accent); cursor: pointer;
   transition: border-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-base);
 }
-.motion-toggle:hover { border-color: var(--border-strong); box-shadow: 0 0 14px rgb(127 212 255 / 0.25); }
+.motion-toggle:hover { border-color: var(--border-strong); background: var(--panel); }
 .motion-toggle svg { width: 18px; height: 18px; }
 .motion-toggle .orbit { transform-origin: 12px 12px; animation: orbit 6s linear infinite; }
 .motion-toggle .slash { opacity: 0; }

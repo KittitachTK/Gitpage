@@ -177,6 +177,6 @@ export function roadmapMermaid(vault: Vault, project: Project): string | undefin
     const x = node(a), y = node(b);
     lines.push(`  ${x} --> ${y}`);
   }
-  lines.push(...clicks, '  classDef linked stroke:#7fd4ff,color:#e8edf5');
+  lines.push(...clicks, '  classDef linked stroke:#d6b98c,color:#e6e2d8');
   return lines.join('\n');
 }

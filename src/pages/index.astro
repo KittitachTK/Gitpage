@@ -61,8 +61,8 @@ const latest = recent(vault, 6);
     overflow: hidden;
     border-bottom: 1px solid var(--border);
     background:
-      radial-gradient(ellipse 60% 50% at 70% 30%, rgb(169 155 255 / 0.1), transparent 70%),
-      radial-gradient(ellipse 50% 40% at 25% 70%, rgb(127 212 255 / 0.08), transparent 70%),
+      radial-gradient(ellipse 60% 50% at 70% 30%, rgb(169 163 198 / 0.07), transparent 70%),
+      radial-gradient(ellipse 50% 40% at 25% 70%, rgb(var(--accent-rgb) / 0.05), transparent 70%),
       var(--bg);
   }
   .hero-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -113,7 +113,7 @@ const latest = recent(vault, 6);
       const y = s.y * h + my * 12 * depth;
       const a = 0.25 + 0.55 * depth * (0.75 + 0.25 * Math.sin(s.tw + t * 2));
       const bright = s.z > 0.97;
-      ctx.fillStyle = bright ? `rgba(127,212,255,${a})` : `rgba(220,228,242,${a})`;
+      ctx.fillStyle = bright ? `rgba(232,212,172,${a})` : `rgba(230,226,216,${a})`; // pale gold / warm white
       ctx.beginPath();
       ctx.arc(x, y, (bright ? 1.6 : 0.4 + depth) * 0.7, 0, Math.PI * 2);
       ctx.fill();
