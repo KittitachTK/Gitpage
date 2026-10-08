@@ -230,8 +230,12 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   const overlay = stage.querySelector<HTMLElement>('.shelf-overlay')!;
   const holo = stage.querySelector<HTMLElement>('.shelf-holo');
   const sky = stage.querySelector<HTMLCanvasElement>('canvas.shelf-sky');
-  const prevBtn = stage.querySelector<HTMLButtonElement>('.shelf-prev');
-  const nextBtn = stage.querySelector<HTMLButtonElement>('.shelf-next');
+  // The view around the stage: the focus area frames the shelves, the sidebar holds the list.
+  const view = (stage.closest('.shelf-view') as HTMLElement | null) ?? stage;
+  const focusEl = view.querySelector<HTMLElement>('.shelf-focus');
+  const side = view.querySelector<HTMLElement>('.shelf-side');
+  const prevBtn = view.querySelector<HTMLButtonElement>('.shelf-prev');
+  const nextBtn = view.querySelector<HTMLButtonElement>('.shelf-next');
 
   let renderer: THREE.WebGLRenderer;
   try {
@@ -427,9 +431,26 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     segments = [];
   }
 
-  function layout() {
+  // Where (in stage pixels) the shelves should sit: the focus area beside the sidebar.
+  const fbox = { x: 0, y: 0, w: 1, h: 1 };
+  function measure() {
     W = stage.clientWidth || 1;
-    narrow = W < NARROW;
+    H = stage.clientHeight || 1;
+    const sr = stage.getBoundingClientRect();
+    const fr = focusEl?.getBoundingClientRect();
+    if (fr && fr.width > 40 && fr.height > 40) {
+      fbox.x = fr.left - sr.left;
+      fbox.y = fr.top - sr.top;
+      fbox.w = fr.width;
+      fbox.h = fr.height;
+    } else {
+      Object.assign(fbox, { x: 0, y: 0, w: W, h: H });
+    }
+  }
+
+  function layout() {
+    measure();
+    narrow = fbox.w < 620;
     clearSegments();
 
     const maxPer = data.mode === 'books' ? (narrow ? 6 : 12) : Infinity;
@@ -446,7 +467,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     }
 
     // Position modules: a carousel on narrow screens, a grid otherwise.
-    const labelSpace = data.mode === 'boards' ? 1.6 : LABEL_SPACE;
+    const labelSpace = data.mode === 'boards' ? 1.4 : LABEL_SPACE;
     const rowH = BOOK_H + labelSpace;
     let bw: number, bh: number, cx: number, cy: number;
     if (narrow) {
@@ -482,15 +503,16 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
       scene.add(s.group);
     }
 
-    // Stage height follows the content's shape.
-    const ideal = narrow ? W * (bh / bw) * 1.05 : W * (bh / bw) * 1.02;
-    H = Math.round(clamp(ideal, narrow ? 360 : 420, Math.min(narrow ? 560 : 860, innerHeight * 0.86)));
-    stage.style.height = `${H}px`;
+    // The scene fills the whole view; the shelves are framed in the focus area
+    // by shifting the projection (setViewOffset) and fitting the distance to it.
     renderer.setSize(W, H, false);
     camera.aspect = W / H;
+    const fx = fbox.x + fbox.w / 2, fy = fbox.y + fbox.h / 2;
+    camera.setViewOffset(W, H, W / 2 - fx, H / 2 - fy, W, H);
 
     const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-    const dist = Math.max(bh / 2 / tan, bw / 2 / (tan * camera.aspect)) + BOOK_D;
+    // World units per pixel at distance d is 2·d·tan / H: fit bw × bh into the frame.
+    const dist = Math.max((bh * H) / (2 * tan * fbox.h * 0.94), (bw * H) / (2 * tan * fbox.w * 0.94)) + BOOK_D;
     camBase.set(cx, cy + dist * 0.12, dist);
     camLook.set(cx, cy, 0);
     camTarget.copy(camBase);
@@ -529,7 +551,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   function syncNav() {
     if (prevBtn) prevBtn.hidden = !narrow || current <= 0;
     if (nextBtn) nextBtn.hidden = !narrow || current >= segments.length - 1;
-    stage.toggleAttribute('data-carousel', narrow);
+    view.toggleAttribute('data-carousel', narrow);
   }
   function goTo(i: number) {
     if (!narrow) return;
@@ -585,6 +607,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   function setHover(b: Book | null) {
     if (selecting || hovered === b) return;
     hovered = b;
+    markHot(b?.link?.href);
     if (b && narrow) {
       const i = segments.findIndex((s) => s.books.includes(b));
       if (i >= 0) goTo(i);
@@ -632,6 +655,39 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
       });
       a.addEventListener('blur', () => { hoveredSeg = null; kick(); });
       a.addEventListener('click', (e) => onSelectBoard(e, a));
+    }
+  }
+
+  // The sidebar list and the shelf light each other up.
+  const norm = (u: string) => {
+    const x = new URL(u, location.href);
+    return x.pathname.replace(/\/?$/, '/');
+  };
+  const listLinks = side ? [...side.querySelectorAll<HTMLAnchorElement>('.shelf-list a[href]')] : [];
+  const listFor = new Map<string, HTMLElement>();
+  for (const a of listLinks) listFor.set(norm(a.href), (a.closest('li') as HTMLElement | null) ?? a);
+  let hot: HTMLElement | null = null;
+  const markHot = (url?: string) => {
+    hot?.classList.remove('is-hot');
+    hot = url ? listFor.get(norm(url)) ?? null : null;
+    hot?.classList.add('is-hot');
+    // Keep it in sight inside the (scrolling) sidebar.
+    if (hot && side && !narrow) {
+      const r = hot.getBoundingClientRect(), sr = side.getBoundingClientRect();
+      if (r.top < sr.top + 8 || r.bottom > sr.bottom - 8) side.scrollTo({ top: side.scrollTop + r.top - sr.top - sr.height / 2, behavior: motionEnabled() ? 'smooth' : 'auto' });
+    }
+  };
+  for (const a of listLinks) {
+    const url = norm(a.href);
+    if (data.mode === 'books') {
+      const b = books.find((x) => x.link && norm(x.link.href) === url);
+      if (!b) continue;
+      a.addEventListener('pointerenter', () => setHover(b));
+      a.addEventListener('pointerleave', () => { if (hovered === b) setHover(null); });
+    } else {
+      const seg = () => segments.find((s) => s.link && norm(s.link.href) === url) ?? null;
+      a.addEventListener('pointerenter', () => { hoveredSeg = seg(); hoveredSeg?.link?.classList.add('is-hot'); kick(); });
+      a.addEventListener('pointerleave', () => { hoveredSeg?.link?.classList.remove('is-hot'); hoveredSeg = null; kick(); });
     }
   }
 
@@ -729,7 +785,8 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     const p1 = p0.clone().addScaledVector(outDir, BOOK_D * 0.95);
     const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-    const dist = h / (2 * tan * 0.62);
+    // Opened, the book fills about half the height of the focus area.
+    const dist = (h * H) / (2 * tan * fbox.h * 0.5);
     const p2 = camera.position.clone().addScaledVector(fwd, dist).add(new THREE.Vector3(BOOK_D * 0.35, 0, 0).applyQuaternion(camera.quaternion));
     const q2 = camera.quaternion.clone().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.PI / 2, 0)));
 
@@ -813,8 +870,10 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     if (!a || !span) return;
     const box = new THREE.Box3().setFromObject(book);
     const r = projectBox(box);
-    // Stretch the link over the stage so its title can sit over the opened book.
+    // Stretch the link over the stage so its title can sit over the opened book,
+    // and let the note's heading morph from it (see the view transition in BaseLayout).
     a.classList.add('is-opening');
+    span.setAttribute('data-vt-title', '');
     a.style.transform = 'none';
     a.style.width = `${W}px`;
     a.style.height = `${H}px`;
@@ -832,6 +891,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     selecting = true;
     stage.classList.add('is-selecting');
     a.classList.add('is-opening');
+    a.querySelector('.shelf-module-name')?.setAttribute('data-vt-title', '');
     const from = camera.position.clone();
     const look0 = camLookCur.clone();
     const centre = seg.group.position.clone().add(new THREE.Vector3(0, BOOK_H * 0.45, 0));
@@ -856,8 +916,12 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
       b.mesh.visible = true;
       b.link?.classList.remove('is-opening');
       b.link?.querySelector<HTMLElement>('.shelf-link-title')?.removeAttribute('style');
+      b.link?.querySelector<HTMLElement>('.shelf-link-title')?.removeAttribute('data-vt-title');
     }
-    links.forEach((a) => a.classList.remove('is-opening'));
+    links.forEach((a) => {
+      a.classList.remove('is-opening');
+      a.querySelector('.shelf-module-name')?.removeAttribute('data-vt-title');
+    });
     applyFilter(filter, true);
     camera.position.copy(camBase);
     camLookCur.copy(camLook);
@@ -916,7 +980,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
         const r = a.getBoundingClientRect(), sr = stage.getBoundingClientRect();
         const hw = holo.offsetWidth, hh = holo.offsetHeight;
         let x = r.left - sr.left + r.width / 2 - hw / 2;
-        x = clamp(x, 12, W - hw - 12);
+        x = clamp(x, narrow ? 12 : fbox.x, W - hw - 12);
         let y = r.top - sr.top - hh - 14;
         if (y < 12) y = Math.min(H - hh - 12, r.bottom - sr.top + 14);
         holo.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
@@ -1041,11 +1105,12 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   document.addEventListener('visibilitychange', () => { last = 0; kick(); });
   onMotionChange(() => { last = 0; kick(); });
 
-  let lastW = 0;
+  let lastKey = '';
   const ro = new ResizeObserver(() => {
-    const w = stage.clientWidth;
-    if (Math.abs(w - lastW) < 1) return;
-    lastW = w;
+    measure();
+    const key = [W, H, fbox.x, fbox.y, fbox.w, fbox.h].map(Math.round).join(',');
+    if (key === lastKey) return;
+    lastKey = key;
     layout();
   });
 
@@ -1053,7 +1118,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   for (const b of books) b.mats[0].userData.cloth = b.mats[0].color.clone();
 
   ro.observe(stage);
-  lastW = stage.clientWidth;
+  if (focusEl) ro.observe(focusEl);
   layout();
   stage.classList.add('is-ready');
 
@@ -1062,7 +1127,6 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   const arrive = stage.dataset.arrive;
   delete stage.dataset.arrive;
   if (arrive && motionEnabled()) {
-    if (arrive === 'warp' && stage.getBoundingClientRect().top > innerHeight * 0.3) stage.scrollIntoView({ block: 'center' });
     stage.classList.add('is-arriving');
     selecting = true;
     const start = camLook.clone().add(new THREE.Vector3(0, 0.25, 1.4));

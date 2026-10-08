@@ -254,14 +254,30 @@ export function mountHome3D(hero: HTMLElement, canvas: HTMLCanvasElement, module
   const look = new THREE.Vector3(0, -0.45, -3);
   const camTarget = new THREE.Vector3();
   let W = 1, H = 1;
+  // The station is framed in `.hero-stage` (beside the text on wide screens,
+  // below it on narrow ones): the projection is shifted onto that box and the
+  // distance fitted so the whole orbit fits inside it.
+  const stageEl = hero.querySelector<HTMLElement>('.hero-stage');
+  const offset = { x: 0, y: 0 };
+  function applyOffset(k = 1) {
+    camera.setViewOffset(W, H, offset.x * k, offset.y * k, W, H);
+  }
   function resize() {
     W = hero.clientWidth || 1;
     H = hero.clientHeight || 1;
     renderer.setSize(W, H, false);
     camera.aspect = W / H;
-    // Keep the orbit inside narrow screens.
+    const hr = hero.getBoundingClientRect();
+    const fr = stageEl?.getBoundingClientRect();
+    const fx = fr && fr.width > 40 ? fr.left - hr.left : 0, fy = fr && fr.height > 40 ? fr.top - hr.top : 0;
+    const fw = fr && fr.width > 40 ? fr.width : W, fh = fr && fr.height > 40 ? fr.height : H;
+    offset.x = W / 2 - (fx + fw / 2);
+    offset.y = H / 2 - (fy + fh / 2);
     const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
-    base.z = Math.max(16, (ORBIT_R * 1.25) / (tan * camera.aspect) - 3);
+    const span = { w: ORBIT_R * 2 * 1.12 + 1.6, h: ORBIT_R * 2 * 0.92 * Math.cos(0.42) + 2.2 };
+    const d = Math.max((span.w * H) / (2 * tan * fw), (span.h * H) / (2 * tan * fh));
+    base.z = d + station.position.z; // camera distance to the station is d
+    if (!warping) applyOffset();
     camera.updateProjectionMatrix();
     kick();
   }
@@ -333,6 +349,7 @@ export function mountHome3D(hero: HTMLElement, canvas: HTMLCanvasElement, module
       camera.position.lerpVectors(from, to, k);
       lookCur.lerpVectors(look0, focus, Math.min(1, k * 1.6));
       camera.fov = FOV + 38 * k;
+      applyOffset(1 - Math.min(1, k * 1.4)); // swing the bay to the centre of the screen
       camera.updateProjectionMatrix();
       streakMat.uniforms.uStretch.value = 9 * k;
       streakMat.uniforms.uOpacity.value = Math.min(1, k * 1.5);
@@ -348,6 +365,7 @@ export function mountHome3D(hero: HTMLElement, canvas: HTMLCanvasElement, module
     tweens.length = 0;
     hero.classList.remove('is-warping');
     camera.fov = FOV;
+    applyOffset();
     camera.updateProjectionMatrix();
     streakMat.uniforms.uStretch.value = 0;
     streakMat.uniforms.uOpacity.value = 0;
@@ -462,7 +480,9 @@ export function mountHome3D(hero: HTMLElement, canvas: HTMLCanvasElement, module
   io.observe(hero);
   document.addEventListener('visibilitychange', () => { last = 0; kick(); });
   onMotionChange(() => { last = 0; kick(); });
-  new ResizeObserver(resize).observe(hero);
+  const ro = new ResizeObserver(resize);
+  ro.observe(hero);
+  if (stageEl) ro.observe(stageEl);
   resize();
   // Compile shaders and upload textures now, so the opening flight starts on a warm GPU.
   camera.position.copy(opts.intro && motionEnabled() ? intro0 : base);

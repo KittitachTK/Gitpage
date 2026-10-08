@@ -26,31 +26,42 @@ const hall: ShelfData = {
 ---
 
 <BaseLayout title="Library" nav="library">
-  <div class="container">
-    <header class="page-head">
+  <ShelfStage data={hall} label="Library shelf modules">
+    <header class="page-head" slot="head">
       <p class="eyebrow">Knowledge library · archive bay</p>
       <h1>Library</h1>
-      <p>Every note in the archive, shelved by field. Pick a shelf module to dock with it. Prefer to wander? Try the <a href={href('universe')}>Knowledge Universe</a>.</p>
-      <form action={href('search')} method="get" role="search" style="margin-top:24px">
+      <p>Every note in the archive, shelved by field. Pick a shelf module to dock with it, or wander the <a href={href('universe')}>Knowledge Universe</a>.</p>
+      <form action={href('search')} method="get" role="search" style="margin-top:18px">
         <input class="big-search" name="q" type="search" placeholder="Search the archive…" aria-label="Search the archive" />
       </form>
     </header>
-
-    <ShelfStage data={hall} label="Library shelf modules">
-      <div class="grid">
-        {
-          secs.map((s) => (
-            <a class="card" href={href(`library/${s.slug}`)} style={`--glow:${s.color}`}>
-              <span class="count">
-                <span class="section-dot" style={`--dot:${s.color}`} />
-                {s.notes.length} notes
-              </span>
+    <ul class="hall-list">
+      {
+        secs.map((s) => (
+          <li>
+            <a class="hall-item" href={href(`library/${s.slug}`)} style={`--dot:${s.color}`} data-empty={s.notes.length ? undefined : ''}>
+              <span class="hall-count"><span class="section-dot" />{s.notes.length} notes</span>
               <h3 data-vt-title>{s.label}</h3>
               <p>{s.blurb}</p>
             </a>
-          ))
-        }
-      </div>
-    </ShelfStage>
-  </div>
+          </li>
+        ))
+      }
+    </ul>
+  </ShelfStage>
 </BaseLayout>
+
+<style>
+  .hall-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .hall-item {
+    display: grid; gap: 2px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text); background: rgb(255 255 255 / 0.015);
+    transition: border-color var(--dur-fast), background var(--dur-fast);
+  }
+  .hall-item:hover, :global(.is-hot) > .hall-item { text-decoration: none; border-color: color-mix(in srgb, var(--dot) 60%, transparent); background: rgb(var(--accent-rgb) / 0.06); }
+  .hall-item h3 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 1.05rem; }
+  .hall-item p { margin: 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
+  .hall-item[data-empty] { opacity: 0.6; }
+  .hall-count { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
+  .hall-count .section-dot { box-shadow: 0 0 8px var(--dot); }
+</style>

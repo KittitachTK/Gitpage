@@ -1,11 +1,10 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import FolderTree from '../../components/FolderTree.astro';
 import NoteList from '../../components/NoteList.astro';
 import ShelfStage from '../../components/Shelf/ShelfStage.astro';
 import { colorVar, shelfBook } from '../../components/Shelf/data';
 import type { ShelfData } from '../../scripts/shelf';
-import { buildTree, recent, sections, type SectionInfo } from '../../lib/site';
+import { recent, sections, type SectionInfo } from '../../lib/site';
 import { getVault } from '../../lib/vault/vault';
 
 export function getStaticPaths() {
@@ -14,7 +13,6 @@ export function getStaticPaths() {
 
 const vault = getVault();
 const sec = sections(vault).find((s) => s.folder === Astro.props.folder) as SectionInfo;
-const tree = buildTree(sec.notes, sec.folder === 'Other' ? 0 : 1);
 const all = recent(vault, Infinity, (n) => sec.notes.includes(n));
 // Note types (summary, exam, lab, …) present in this section, most common first.
 const counts = new Map<string, number>();
@@ -37,34 +35,36 @@ const shelf: ShelfData = {
 ---
 
 <BaseLayout title={sec.label} nav="library">
-  <div class="container">
-    <header class="page-head">
+  <ShelfStage data={shelf} label={`${sec.label} bookshelf`}>
+    <header class="page-head" slot="head">
       <p class="eyebrow"><span class="section-dot" style={`--dot:${sec.color}`}></span>Library · {sec.notes.length} notes</p>
       <h1 data-vt-title>{sec.label}</h1>
       <p>{sec.blurb}</p>
     </header>
-    <ShelfStage data={shelf} label={`${sec.label} bookshelf`}>
+    {
+      types.length > 1 && (
+        <div class="type-filter" role="group" aria-label="Filter by note type" slot="toolbar">
+          <button type="button" class="type-chip" data-type="" aria-pressed="true">All <small>{all.length}</small></button>
+          {types.map(([t, c]) => (
+            <button type="button" class="type-chip" data-type={t} aria-pressed="false">{t} <small>{c}</small></button>
+          ))}
+        </div>
+      )
+    }
+    <div class="by-type">
       {
-        types.length > 1 && (
-          <div class="type-filter" role="group" aria-label="Filter by note type" slot="toolbar">
-            <button type="button" class="type-chip" data-type="" aria-pressed="true">All <small>{all.length}</small></button>
-            {types.map(([t, c]) => (
-              <button type="button" class="type-chip" data-type={t} aria-pressed="false">{t} <small>{c}</small></button>
-            ))}
-          </div>
-        )
+        shelf.boards.map((board) => (
+          <section class="side-group">
+            <h2 class="side-group-title">
+              <span class="section-dot" style={`--dot:${sec.color}`} />
+              {board.label} <small>{rows.get(board.id)!.length}</small>
+            </h2>
+            <NoteList notes={rows.get(board.id)!} date={false} />
+          </section>
+        ))
       }
-      <div class="section-layout">
-        <nav class="tree panel" aria-label={`${sec.label} contents`}>
-          <FolderTree tree={tree} expanded />
-        </nav>
-        <section class="by-type">
-          <p class="eyebrow">Notes · most recently updated first</p>
-          <NoteList notes={all} excerpt />
-        </section>
-      </div>
-    </ShelfStage>
-  </div>
+    </div>
+  </ShelfStage>
 </BaseLayout>
 
 <script>
@@ -75,6 +75,8 @@ const shelf: ShelfData = {
     if (type && !chips.some((c) => c.dataset.type === type)) type = '';
     for (const c of chips) c.setAttribute('aria-pressed', String(c.dataset.type === type));
     for (const li of items) li.hidden = !!type && li.dataset.type !== type;
+    // Shelf groups with nothing left to show fold away.
+    for (const g of document.querySelectorAll<HTMLElement>('.side-group')) g.hidden = ![...g.querySelectorAll('li')].some((li) => !li.hidden);
     // The 3D shelf dims the volumes that don't match instead of hiding them.
     const stage = document.querySelector<HTMLElement>('.shelf-stage');
     if (stage) {
@@ -96,18 +98,22 @@ const shelf: ShelfData = {
 </script>
 
 <style>
-  .section-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
-  .tree.panel { padding: 20px 24px; font-size: 0.95rem; }
-  .type-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+  .type-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; }
   .type-chip {
-    font: inherit; font-family: var(--font-mono); font-size: 0.75rem; text-transform: capitalize; cursor: pointer;
-    color: var(--text-muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px;
+    font: inherit; font-family: var(--font-mono); font-size: 0.72rem; text-transform: capitalize; cursor: pointer;
+    color: var(--text-muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px;
     transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
   }
   .type-chip small { color: var(--text-faint); margin-left: 2px; }
   .type-chip:hover { color: var(--text); border-color: var(--border-strong); }
   .type-chip[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
-  @media (max-width: 860px) {
-    .section-layout { grid-template-columns: 1fr; }
+  .side-group + .side-group { margin-top: 18px; }
+  .side-group-title {
+    display: flex; align-items: center; gap: 8px; margin: 0 0 4px;
+    font-family: var(--font-mono); font-weight: 400; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted);
   }
+  .side-group-title small { color: var(--text-faint); letter-spacing: 0.06em; }
+  .by-type :global(.note-list a) { padding: 10px 6px; border-radius: var(--radius-sm); }
+  .by-type :global(.note-list .t) { font-size: 0.95rem; line-height: 1.4; }
+  .by-type :global(.note-list .p) { font-size: 0.72rem; }
 </style>
