@@ -24,5 +24,7 @@ tags:
 
 ## Lab / Notebook
 
+- [[Lecture 14 FastAPI, Render]]
+- [[เฉลย Lecture 14 FastAPI, Render]]
 - [[Lab P05 Gaussian Basis, Regularization]]
 - [[Lab P01-P04 Linear Regression]]
