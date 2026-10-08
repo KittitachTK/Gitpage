@@ -94,6 +94,13 @@ const json = JSON.stringify(data).replace(/</g, '\\u003c');
     const buttons = [...view.querySelectorAll<HTMLButtonElement>('[data-set-view]')];
     let mounted = false;
 
+    // Set by the home station's warp just before it navigated here; consumed once.
+    try {
+      const arrive = sessionStorage.getItem('planktos:arrive');
+      sessionStorage.removeItem('planktos:arrive');
+      if (arrive) stage.dataset.arrive = arrive;
+    } catch {}
+
     // Only the visible view may carry data-vt-title, so the page-title morph
     // starts from what the reader actually clicked.
     const setView = (v: 'shelf' | 'list', remember = true) => {

@@ -4,10 +4,21 @@ import NoteList from '../components/NoteList.astro';
 import { SITE, href } from '../lib/config';
 import { recent, sections } from '../lib/site';
 import { getVault } from '../lib/vault/vault';
+import { colorVar, shelfBook } from '../components/Shelf/data';
+import type { HomeModule } from '../scripts/home3d';
 
 const vault = getVault();
 const secs = sections(vault).filter((s) => s.notes.length);
 const latest = recent(vault, 6);
+// Shelf modules orbiting the archive station in the 3D hero (one per section with notes).
+const orbit: HomeModule[] = secs.map((s) => ({
+  id: s.slug,
+  label: s.label,
+  color: colorVar(s.color),
+  url: href(`library/${s.slug}`),
+  count: s.notes.length,
+  books: recent(vault, 8, (n) => s.notes.includes(n)).map(shelfBook),
+}));
 const stats = [
   { n: vault.notes.length, label: 'notes' },
   { n: vault.graph.links.length, label: 'connections' },
@@ -35,6 +46,15 @@ const stats = [
     </script>
     <canvas class="hero-nebula" aria-hidden="true"></canvas>
     <canvas class="hero-sky" aria-hidden="true"></canvas>
+    <canvas class="hero-3d" aria-hidden="true"></canvas>
+    <nav class="orbit-links" aria-label="Shelf modules in orbit">
+      {orbit.map((m) => (
+        <a class="orbit-link" href={m.url} data-id={m.id} style={`--dot:var(${m.color})`}>
+          <span class="orbit-label"><span class="section-dot" />{m.label} <small>{m.count}</small></span>
+        </a>
+      ))}
+    </nav>
+    <script type="application/json" class="orbit-data" set:html={JSON.stringify(orbit).replace(/</g, '\\u003c')} />
     <div class="hero-inner container">
       <p class="eyebrow intro-step" style="--d:150ms">{SITE.tagline}</p>
       <h1 aria-label={`${SITE.name} ${SITE.subtitle}`}>
@@ -46,7 +66,7 @@ const stats = [
       <p class="hero-motto intro-step" style="--d:1100ms">Explore the unknown</p>
       <p class="hero-copy intro-step" style="--d:1200ms">{SITE.description}</p>
       <div class="hero-actions intro-step" style="--d:1300ms">
-        <a class="btn" href={href('library')}>Enter archive</a>
+        <a class="btn" href={href('library')} data-warp>Enter archive</a>
         <a class="btn ghost galaxy" href={href('universe')}><span class="sky" aria-hidden="true"></span><span class="label">Knowledge universe ✦</span></a>
       </div>
       <p class="hero-stats intro-step" style="--d:1400ms">
@@ -111,7 +131,40 @@ const stats = [
   .hero-sky, .hero-nebula { position: absolute; inset: 0; width: 100%; height: 100%; }
   .hero-nebula { opacity: 0; transition: opacity 2.4s var(--ease-out); }
   .hero-nebula:global(.ready) { opacity: 1; }
-  .hero-inner { position: relative; text-align: center; padding-top: 48px; padding-bottom: 48px; }
+  .hero-inner { position: relative; z-index: 3; text-align: center; padding-top: 48px; padding-bottom: 48px; pointer-events: none; transition: opacity 500ms var(--ease-out), transform 900ms var(--ease-in); }
+  .hero-inner :global(a), .hero-inner :global(button) { pointer-events: auto; }
+  /* A soft pool of shadow so the title reads over the station. */
+  .hero-inner::before {
+    content: ''; position: absolute; inset: -4% 6%; z-index: -1; pointer-events: none;
+    background: radial-gradient(closest-side, rgb(7 9 14 / 0.62), rgb(7 9 14 / 0.25) 60%, transparent);
+  }
+  .hero h1, .hero-copy, .hero-motto { text-shadow: 0 0 24px rgb(7 9 14 / 0.9); }
+
+  /* ---- 3D archive station (scripts/home3d.ts) --------------------------------- */
+  .hero-3d { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; opacity: 0; transition: opacity 1.4s var(--ease-out); }
+  .hero:global(.has-3d) .hero-3d { opacity: 1; }
+  .orbit-links { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+  .hero:not(:global(.has-3d)) .orbit-links { display: none; }
+  .orbit-link { position: absolute; top: 0; left: 0; pointer-events: auto; border-radius: var(--radius-sm); color: var(--text); will-change: transform; transition: opacity var(--dur-base); }
+  .orbit-link:hover { text-decoration: none; }
+  .orbit-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .orbit-link[data-behind] { opacity: 0; pointer-events: none; }
+  .orbit-label {
+    position: absolute; left: 0; top: 100%; margin-top: 6px; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted);
+    padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; background: rgb(7 9 14 / 0.55);
+    transition: color var(--dur-fast), border-color var(--dur-fast);
+  }
+  .orbit-label small { color: var(--text-faint); letter-spacing: 0.06em; }
+  .orbit-label .section-dot { box-shadow: 0 0 8px var(--dot); }
+  .orbit-link:hover .orbit-label, .orbit-link:focus-visible .orbit-label { color: var(--accent); border-color: var(--accent); }
+
+  /* ---- warp to the Library ---------------------------------------------------- */
+  .hero::after { content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none; background: var(--bg); opacity: 0; }
+  .hero:global(.is-warping)::after { opacity: 1; transition: opacity 380ms var(--ease-in) 760ms; }
+  .hero:global(.is-warping) .hero-inner { opacity: 0; transform: scale(1.12); }
+  .hero:global(.is-warping) .orbit-links { opacity: 0; transition: opacity 300ms; }
   .hero h1 {
     font-family: var(--font-display);
     font-weight: 500;
@@ -174,6 +227,23 @@ const stats = [
 
   const sky = mountStarfield(document.querySelector<HTMLCanvasElement>('.hero-sky')!);
   mountNebula(document.querySelector<HTMLCanvasElement>('.hero-nebula')!, sky.parallax);
+
+  // The 3D archive station loads once fonts for its book spines are in (or after a short wait).
+  const hero = document.querySelector<HTMLElement>('.hero')!;
+  const webgl = (() => {
+    try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; }
+  })();
+  if (webgl) {
+    const intro = document.documentElement.classList.contains('home-intro');
+    const fonts = Promise.all([
+      document.fonts.load('500 32px "Space Grotesk"'),
+      document.fonts.load('500 32px "IBM Plex Sans Thai"', 'กขค'),
+    ]).catch(() => {});
+    Promise.all([import('../scripts/home3d'), Promise.race([fonts, new Promise((r) => setTimeout(r, 1500))])]).then(([{ mountHome3D }]) => {
+      const data = JSON.parse(hero.querySelector('.orbit-data')!.textContent!);
+      mountHome3D(hero, hero.querySelector<HTMLCanvasElement>('.hero-3d')!, data, { intro });
+    });
+  }
 
   // Stats count up as the opening sequence reaches them.
   if (document.documentElement.classList.contains('home-intro')) {

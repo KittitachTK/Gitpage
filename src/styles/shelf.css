@@ -142,3 +142,8 @@ html[data-motion='off'] .shelf-gl { transition: none; }
   html:not([data-motion='on']) .shelf-holo,
   html:not([data-motion='on']) .shelf-gl { transition: none; }
 }
+
+/* Arrival from the home station: labels and links settle in after the camera. */
+.shelf-stage.is-arriving .shelf-overlay,
+.shelf-stage.is-arriving .shelf-hint { animation: shelf-arrive 700ms var(--ease-out) 900ms both; }
+@keyframes shelf-arrive { from { opacity: 0; } }

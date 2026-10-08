@@ -42,8 +42,8 @@ export interface ShelfData {
 
 // ---- dimensions (scene units) ---------------------------------------------------
 
-const BOOK_H = 1;
-const BOOK_D = 0.62;
+export const BOOK_H = 1;
+export const BOOK_D = 0.62;
 const GAP = 0.018;
 const PAD = 0.16;
 const MIN_BOARD_W = 1.5;
@@ -60,14 +60,14 @@ const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t 
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeIn = (t: number) => t * t * t;
 
-function hash(s: string) {
+export function hash(s: string) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return ((h >>> 0) % 10000) / 10000;
 }
 
-const thickness = (minutes: number) => 0.075 + 0.115 * clamp(Math.log1p(minutes) / Math.log1p(80), 0, 1);
-const heightOf = (id: string) => BOOK_H * (0.86 + 0.14 * hash(id));
+export const thickness = (minutes: number) => 0.075 + 0.115 * clamp(Math.log1p(minutes) / Math.log1p(80), 0, 1);
+export const heightOf = (id: string) => BOOK_H * (0.86 + 0.14 * hash(id));
 
 const TYPE_ABBR: Record<string, string> = {
   summary: 'SUM', exam: 'EXAM', lab: 'LAB', solution: 'SOL', worksheet: 'WKS', assignment: 'ASGN',
@@ -78,7 +78,7 @@ const TYPE_ABBR: Record<string, string> = {
 
 interface AtlasCell { texture: THREE.CanvasTexture; u0: number; u1: number; v0: number; v1: number }
 
-class SpineAtlas {
+export class SpineAtlas {
   private canvases: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; texture: THREE.CanvasTexture; x: number; strip: number }[] = [];
 
   constructor(private fonts: { display: string; mono: string }, private colors: Palette) {}
@@ -178,9 +178,9 @@ class SpineAtlas {
 
 // ---- palette -------------------------------------------------------------------
 
-interface Palette { bg: THREE.Color; text: THREE.Color; accent: THREE.Color; accent2: THREE.Color; page: THREE.Color }
+export interface Palette { bg: THREE.Color; text: THREE.Color; accent: THREE.Color; accent2: THREE.Color; page: THREE.Color }
 
-function readPalette(el: Element): Palette {
+export function readPalette(el: Element): Palette {
   const cs = getComputedStyle(el);
   const c = (name: string, fallback: string) => new THREE.Color(cs.getPropertyValue(name).trim() || fallback);
   return {
@@ -839,7 +839,10 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     tween(620, easeIn, (k) => {
       camera.position.lerpVectors(from, to, k);
       camLookCur.lerpVectors(look0, centre, k);
-    }, 0, () => location.assign(a.href));
+    }, 0, () => {
+      try { sessionStorage.setItem('planktos:arrive', 'dock'); } catch {}
+      location.assign(a.href);
+    });
   }
 
   function resetSelection() {
@@ -1053,6 +1056,38 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   lastW = stage.clientWidth;
   layout();
   stage.classList.add('is-ready');
+
+  // Arriving from the home station's warp (or docking from another shelf):
+  // the camera pulls back out of the bay while the modules drift into place.
+  const arrive = stage.dataset.arrive;
+  delete stage.dataset.arrive;
+  if (arrive && motionEnabled()) {
+    if (arrive === 'warp' && stage.getBoundingClientRect().top > innerHeight * 0.3) stage.scrollIntoView({ block: 'center' });
+    stage.classList.add('is-arriving');
+    selecting = true;
+    const start = camLook.clone().add(new THREE.Vector3(0, 0.25, 1.4));
+    const fov0 = arrive === 'warp' ? 78 : 52;
+    camera.position.copy(start);
+    camera.fov = fov0;
+    camera.updateProjectionMatrix();
+    segments.forEach((s) => (s.group.position.z -= 7));
+    // Render once first so shader compilation doesn't eat the animation.
+    camera.lookAt(camLookCur);
+    renderer.compile(scene, camera);
+    renderer.render(scene, camera);
+    tween(1500, easeOut, (k) => {
+      camera.position.lerpVectors(start, camBase, k);
+      camera.fov = fov0 + (FOV - fov0) * k;
+      camera.updateProjectionMatrix();
+    }, 0, () => {
+      selecting = false;
+      stage.classList.remove('is-arriving');
+    });
+    segments.forEach((s, i) => {
+      const z = s.group.position.z + 7;
+      tween(1300, easeOut, (k) => (s.group.position.z = z - 7 * (1 - k)), 80 * i);
+    });
+  }
 
   // ?book=<slug>: coming back from a note, find its book again.
   const want = new URLSearchParams(location.search).get('book');
