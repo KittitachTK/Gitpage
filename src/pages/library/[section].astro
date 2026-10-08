@@ -2,6 +2,9 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FolderTree from '../../components/FolderTree.astro';
 import NoteList from '../../components/NoteList.astro';
+import ShelfStage from '../../components/Shelf/ShelfStage.astro';
+import { colorVar, shelfBook } from '../../components/Shelf/data';
+import type { ShelfData } from '../../scripts/shelf';
 import { buildTree, recent, sections, type SectionInfo } from '../../lib/site';
 import { getVault } from '../../lib/vault/vault';
 
@@ -17,6 +20,20 @@ const all = recent(vault, Infinity, (n) => sec.notes.includes(n));
 const counts = new Map<string, number>();
 for (const n of all) if (n.type) counts.set(n.type, (counts.get(n.type) ?? 0) + 1);
 const types = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+// One shelf per top-level folder; volumes most recently updated first, like the list.
+const rows = new Map<string, typeof all>();
+for (const n of all) {
+  const key = n.folders[1] ?? sec.label;
+  if (!rows.has(key)) rows.set(key, []);
+  rows.get(key)!.push(n);
+}
+const shelf: ShelfData = {
+  mode: 'books',
+  boards: [...rows]
+    .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
+    .map(([label, notes]) => ({ id: label, label, color: colorVar(sec.color), books: notes.map(shelfBook) })),
+};
 ---
 
 <BaseLayout title={sec.label} nav="library">
@@ -26,25 +43,27 @@ const types = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
       <h1 data-vt-title>{sec.label}</h1>
       <p>{sec.blurb}</p>
     </header>
-    <div class="section-layout">
-      <nav class="tree panel" aria-label={`${sec.label} contents`}>
-        <FolderTree tree={tree} expanded />
-      </nav>
-      <section class="by-type">
-        <p class="eyebrow">Notes · most recently updated first</p>
-        {
-          types.length > 1 && (
-            <div class="type-filter" role="group" aria-label="Filter by note type">
-              <button type="button" class="type-chip" data-type="" aria-pressed="true">All <small>{all.length}</small></button>
-              {types.map(([t, c]) => (
-                <button type="button" class="type-chip" data-type={t} aria-pressed="false">{t} <small>{c}</small></button>
-              ))}
-            </div>
-          )
-        }
-        <NoteList notes={all} excerpt />
-      </section>
-    </div>
+    <ShelfStage data={shelf} label={`${sec.label} bookshelf`}>
+      {
+        types.length > 1 && (
+          <div class="type-filter" role="group" aria-label="Filter by note type" slot="toolbar">
+            <button type="button" class="type-chip" data-type="" aria-pressed="true">All <small>{all.length}</small></button>
+            {types.map(([t, c]) => (
+              <button type="button" class="type-chip" data-type={t} aria-pressed="false">{t} <small>{c}</small></button>
+            ))}
+          </div>
+        )
+      }
+      <div class="section-layout">
+        <nav class="tree panel" aria-label={`${sec.label} contents`}>
+          <FolderTree tree={tree} expanded />
+        </nav>
+        <section class="by-type">
+          <p class="eyebrow">Notes · most recently updated first</p>
+          <NoteList notes={all} excerpt />
+        </section>
+      </div>
+    </ShelfStage>
   </div>
 </BaseLayout>
 
@@ -56,6 +75,12 @@ const types = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
     if (type && !chips.some((c) => c.dataset.type === type)) type = '';
     for (const c of chips) c.setAttribute('aria-pressed', String(c.dataset.type === type));
     for (const li of items) li.hidden = !!type && li.dataset.type !== type;
+    // The 3D shelf dims the volumes that don't match instead of hiding them.
+    const stage = document.querySelector<HTMLElement>('.shelf-stage');
+    if (stage) {
+      stage.dataset.filter = type;
+      stage.dispatchEvent(new CustomEvent('shelf-filter', { detail: type }));
+    }
   };
   for (const c of chips) {
     c.addEventListener('click', () => {
@@ -73,7 +98,7 @@ const types = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
 <style>
   .section-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
   .tree.panel { padding: 20px 24px; font-size: 0.95rem; }
-  .type-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+  .type-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
   .type-chip {
     font: inherit; font-family: var(--font-mono); font-size: 0.75rem; text-transform: capitalize; cursor: pointer;
     color: var(--text-muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px;

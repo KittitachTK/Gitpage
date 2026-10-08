@@ -1,35 +1,56 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import ShelfStage from '../../components/Shelf/ShelfStage.astro';
+import { colorVar, shelfBook } from '../../components/Shelf/data';
 import { href } from '../../lib/config';
-import { sections } from '../../lib/site';
+import { recent, sections } from '../../lib/site';
 import { getVault } from '../../lib/vault/vault';
+import type { ShelfData } from '../../scripts/shelf';
 
-const secs = sections(getVault());
+const vault = getVault();
+const secs = sections(vault);
+
+// The archive hall: one floating shelf module per section, stocked with its most recent volumes.
+const hall: ShelfData = {
+  mode: 'boards',
+  boards: secs.map((s) => ({
+    id: s.slug,
+    label: s.label,
+    color: colorVar(s.color),
+    url: href(`library/${s.slug}`),
+    count: s.notes.length,
+    blurb: s.blurb,
+    books: recent(vault, 9, (n) => s.notes.includes(n)).map(shelfBook),
+  })),
+};
 ---
 
 <BaseLayout title="Library" nav="library">
   <div class="container">
     <header class="page-head">
-      <p class="eyebrow">Knowledge library</p>
+      <p class="eyebrow">Knowledge library · archive bay</p>
       <h1>Library</h1>
-      <p>Every note in the archive, organised by field. Prefer to wander? Try the <a href={href('universe')}>Knowledge Universe</a>.</p>
+      <p>Every note in the archive, shelved by field. Pick a shelf module to dock with it. Prefer to wander? Try the <a href={href('universe')}>Knowledge Universe</a>.</p>
       <form action={href('search')} method="get" role="search" style="margin-top:24px">
         <input class="big-search" name="q" type="search" placeholder="Search the archive…" aria-label="Search the archive" />
       </form>
     </header>
-    <div class="grid">
-      {
-        secs.map((s) => (
-          <a class="card" href={href(`library/${s.slug}`)} style={`--glow:${s.color}`}>
-            <span class="count">
-              <span class="section-dot" style={`--dot:${s.color}`} />
-              {s.notes.length} notes
-            </span>
-            <h3 data-vt-title>{s.label}</h3>
-            <p>{s.blurb}</p>
-          </a>
-        ))
-      }
-    </div>
+
+    <ShelfStage data={hall} label="Library shelf modules">
+      <div class="grid">
+        {
+          secs.map((s) => (
+            <a class="card" href={href(`library/${s.slug}`)} style={`--glow:${s.color}`}>
+              <span class="count">
+                <span class="section-dot" style={`--dot:${s.color}`} />
+                {s.notes.length} notes
+              </span>
+              <h3 data-vt-title>{s.label}</h3>
+              <p>{s.blurb}</p>
+            </a>
+          ))
+        }
+      </div>
+    </ShelfStage>
   </div>
 </BaseLayout>

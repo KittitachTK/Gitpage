@@ -1,0 +1,144 @@
+/* ==========================================================================
+   Library · zero-gravity bookshelf (ShelfStage.astro + scripts/shelf.ts)
+   The stage is a `.space` scene, so it keeps the dark palette in the light
+   theme like the home hero and the universe.
+   ========================================================================== */
+
+.shelf-view[data-view='shelf'] .shelf-list { display: none; }
+.shelf-view[data-view='list'] .shelf-stage { display: none; }
+
+.shelf-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; margin: 0 0 14px; min-height: 34px; }
+.shelf-toolbar > :first-child:not(.shelf-switch) { flex: 1 1 auto; }
+.shelf-switch { display: inline-flex; margin-left: auto; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel); }
+.shelf-switch button {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-faint); background: none; border: 0; border-radius: 999px; padding: 5px 12px; cursor: pointer;
+  transition: color var(--dur-fast), background var(--dur-fast);
+}
+.shelf-switch button svg { width: 14px; height: 14px; }
+.shelf-switch button:hover { color: var(--text); }
+.shelf-switch button[aria-pressed='true'] { color: var(--accent); background: var(--accent-soft); }
+
+.shelf-stage {
+  position: relative;
+  height: clamp(420px, 64vh, 760px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(ellipse 70% 55% at 22% 18%, rgb(var(--accent-rgb) / 0.07), transparent 70%),
+    radial-gradient(ellipse 60% 60% at 82% 78%, rgb(169 163 198 / 0.08), transparent 70%),
+    radial-gradient(ellipse at 50% 120%, #10141f, var(--bg) 70%);
+  touch-action: pan-y;
+  isolation: isolate;
+  margin-bottom: 40px;
+}
+.shelf-stage::after {
+  /* Faint station-glass vignette over everything. */
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  box-shadow: inset 0 0 120px rgb(0 0 0 / 0.55);
+  border-radius: inherit;
+}
+.shelf-sky, .shelf-gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.shelf-sky { opacity: 0.85; }
+.shelf-gl { opacity: 0; transition: opacity 900ms var(--ease-out); }
+.shelf-stage.is-ready .shelf-gl { opacity: 1; }
+
+.shelf-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.shelf-stage:not(.is-ready) .shelf-overlay { visibility: hidden; }
+.shelf-row { display: contents; }
+
+.shelf-link {
+  position: absolute; top: 0; left: 0; display: block; pointer-events: auto;
+  border-radius: 3px; color: var(--text); text-decoration: none; will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+}
+.shelf-link:hover { text-decoration: none; }
+.shelf-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 22px rgb(var(--accent-rgb) / 0.45); }
+.shelf-link[data-dim] { cursor: default; }
+.shelf-link-title {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: max-content; max-width: 240px; opacity: 0; pointer-events: none;
+  font-family: var(--font-display); font-weight: 500; font-size: clamp(1.1rem, 2.4vw, 1.6rem); line-height: 1.2; text-align: center;
+  color: var(--text-strong); text-shadow: 0 0 18px rgb(0 0 0 / 0.9), 0 0 4px rgb(0 0 0 / 0.8);
+}
+.shelf-link.is-opening { pointer-events: none; outline: none; box-shadow: none; }
+.shelf-link.is-opening .shelf-link-title { opacity: 1; transition: opacity 180ms var(--ease-out); }
+
+/* Shelf labels (section shelves) */
+.shelf-label {
+  position: absolute; top: 0; left: 0; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; pointer-events: none;
+  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted);
+  padding-top: 10px; transition: opacity var(--dur-base);
+}
+.shelf-label-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 10px var(--dot); }
+.shelf-label-count { color: var(--text-faint); border: 1px solid var(--border-strong); border-radius: 999px; padding: 0 7px; letter-spacing: 0.08em; }
+
+/* Shelf modules (library hall) */
+.shelf-module { border-radius: var(--radius-sm); }
+.shelf-module-label {
+  position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 12px;
+  display: grid; justify-items: center; gap: 2px; width: max-content; max-width: min(280px, 80vw); text-align: center;
+}
+.shelf-module-label h3 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 1.12rem; line-height: 1.25; color: var(--text); transition: color var(--dur-fast); }
+.shelf-module-count { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); }
+.shelf-module-blurb { font-size: 0.8rem; line-height: 1.45; color: var(--text-muted); }
+.shelf-module .section-dot { box-shadow: 0 0 10px var(--dot); }
+.shelf-module:hover h3, .shelf-module:focus-visible h3 { color: var(--accent); }
+
+/* Holographic label for the hovered / focused volume */
+.shelf-holo {
+  --holo: var(--accent);
+  position: absolute; top: 0; left: 0; z-index: 4; width: min(320px, calc(100% - 24px));
+  display: grid; gap: 4px; padding: 12px 14px 13px; pointer-events: none;
+  background: linear-gradient(160deg, rgb(16 22 34 / 0.86), rgb(8 11 18 / 0.8));
+  border: 1px solid color-mix(in srgb, var(--holo) 55%, transparent);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4), 0 0 28px color-mix(in srgb, var(--holo) 22%, transparent), 0 18px 40px rgb(0 0 0 / 0.5);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  opacity: 0; translate: 0 6px; transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-base) var(--ease-out);
+}
+.shelf-holo::before {
+  /* scanlines */
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px);
+}
+.shelf-holo.shown { opacity: 1; translate: 0 0; }
+.holo-path { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--holo); }
+.holo-title { font-family: var(--font-display); font-weight: 500; font-size: 1.02rem; line-height: 1.3; color: var(--text-strong); }
+.holo-meta { font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.06em; color: var(--text-faint); }
+.holo-excerpt {
+  font-size: 0.82rem; line-height: 1.5; color: var(--text-muted); margin-top: 4px;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* Carousel controls (narrow screens) */
+.shelf-nav {
+  position: absolute; top: 50%; z-index: 4; translate: 0 -50%; width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; font: 400 1.6rem/1 var(--font-display); color: var(--text);
+  background: rgb(16 20 28 / 0.7); border: 1px solid var(--border-strong); cursor: pointer;
+}
+.shelf-nav:hover { border-color: var(--accent); color: var(--accent); }
+.shelf-nav[hidden] { display: none; }
+.shelf-prev { left: 10px; }
+.shelf-next { right: 10px; }
+
+.shelf-hint {
+  position: absolute; left: 0; right: 0; bottom: 10px; z-index: 4; margin: 0; text-align: center; pointer-events: none;
+  font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-faint);
+  transition: opacity var(--dur-base);
+}
+.shelf-stage[data-carousel] .shelf-hint { display: none; }
+@media (hover: none) { .shelf-hint { display: none; } }
+
+.shelf-stage.is-selecting .shelf-label,
+.shelf-stage.is-selecting .shelf-hint,
+.shelf-stage.is-selecting .shelf-nav,
+.shelf-stage.is-selecting .shelf-module:not(.is-opening) { opacity: 0; transition: opacity var(--dur-base); }
+
+html[data-motion='off'] .shelf-holo,
+html[data-motion='off'] .shelf-gl { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion='on']) .shelf-holo,
+  html:not([data-motion='on']) .shelf-gl { transition: none; }
+}
