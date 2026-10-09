@@ -17,6 +17,7 @@ tags:
 
 - [[Ch7-8 Bias-Variance, Linear Regression]]
 - [[Ch8-12 Tree, Ensemble, Clustering]]
+- [[เตรียมสอบ Ch9-10, 12 Classification, Ensemble, Model Validation]]
 
 ## ข้อสอบและเฉลย
 
