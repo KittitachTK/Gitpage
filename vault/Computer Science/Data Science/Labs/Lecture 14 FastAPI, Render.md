@@ -9,7 +9,6 @@ type: lab
 chapters: "14"
 related:
   - "[[เฉลย Lecture 14 FastAPI, Render]]"
-  - "[[Ch8-12 Tree, Ensemble, Clustering]]"
 tags:
   - data-science
   - CP352101
@@ -259,7 +258,7 @@ print(confusion_matrix(y_test, y_pred))
   - `test_size=0.2` กันไว้ทดสอบ 20% คือ 30 ดอก เหลือฝึก 120 ดอก
   - `stratify=iris.target` รักษาสัดส่วนสายพันธุ์ให้เท่าเดิม ชุดทดสอบจึงได้สายพันธุ์ละ 10 ดอกพอดี
   - `random_state=42` ล็อกการสุ่ม รันกี่ครั้งก็แบ่งได้ชุดเดิม
-- `RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=1)` สร้างโมเดลที่มีต้นไม้ตัดสินใจ 100 ต้น (ดูหลักการที่ [[Ch8-12 Tree, Ensemble, Clustering]]) ล็อกการสุ่มไว้ที่ 42 และใช้ CPU 1 แกน
+- `RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=1)` สร้างโมเดลที่มีต้นไม้ตัดสินใจ 100 ต้น ล็อกการสุ่มไว้ที่ 42 และใช้ CPU 1 แกน
 - `model.fit(X_train, y_train)` ฝึกโมเดลจากชุดฝึก
 - `model.predict(X_test)` ให้โมเดลทายชุดทดสอบ ซึ่งเป็นข้อมูลที่โมเดลไม่เคยเห็น
 - `accuracy_score`, `classification_report`, `confusion_matrix` เทียบคำทายกับคำตอบจริง

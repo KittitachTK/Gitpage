@@ -18,6 +18,11 @@ tags:
 - [[Ch1-7 Array, Stack, Queue, Tree]]
 - [[Ch6-8 Doubly Linked List, BST, Search]]
 - [[Ch8-11 Search, Heap, Hashing, Graph]]
+- [[Ch8 Searching Algorithm]]
+- [[Ch9 Priority Queue]]
+- [[Ch10 Hashing]]
+- [[Ch11 Graph]]
+- [[Ch12 Sorting]]
 
 ## แบบฝึกหัดและงานที่ได้รับมอบหมาย
 
