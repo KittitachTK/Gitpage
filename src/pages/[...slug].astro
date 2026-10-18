@@ -33,9 +33,15 @@ const html = firstH1
 // shallowest heading level present (excluding the title H1) and shows two levels.
 const tocHeadings = firstH1 ? note.headings.slice(1) : note.headings;
 const top = Math.min(6, ...tocHeadings.map((h) => h.depth));
+// Headings with math show the rendered equation, not its TeX source: reuse the
+// heading's HTML from the note body (links unwrapped — the entry is a link).
+const headingHtml = new Map<string, string>();
+for (const m of html.matchAll(/<h([1-6]) id="([^"]+)"[^>]*>([\s\S]*?)<\/h\1>/g)) {
+  headingHtml.set(m[2], m[3].replace(/<\/?a\b[^>]*>/g, ''));
+}
 const toc = tocHeadings
   .filter((h) => h.depth === top || h.depth === top + 1)
-  .map((h) => ({ ...h, depth: h.depth - top + 2 }));
+  .map((h) => ({ ...h, depth: h.depth - top + 2, html: h.text.includes('$') ? headingHtml.get(h.id) : undefined }));
 
 const backlinks = vault.backlinks(note);
 const sectionNotes = note.folders.length ? vault.notes.filter((n) => n.section === note.section) : [];
@@ -225,7 +231,7 @@ const shelfUrl = shelfSection && href(`library/${shelfSection.slug}?book=${encod
                 <li data-depth={h.depth}>
                   <a href={`#${h.id}`}>
                     <span class="n">{h.depth === 2 ? String(toc.filter((x, j) => j <= i && x.depth === 2).length).padStart(2, '0') : '·'}</span>
-                    <span>{h.text}</span>
+                    {h.html ? <span set:html={h.html} /> : <span>{h.text}</span>}
                   </a>
                 </li>
               ))}

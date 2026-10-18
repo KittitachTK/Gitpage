@@ -28,7 +28,7 @@ export interface RenderedNote {
 
 /** Markdown → mdast with every Obsidian transform applied (used for embeds too). */
 function parseNote(note: Note, ctx: RenderContext): Root {
-  const source = stripComments(note.body);
+  const source = splitMathFences(stripComments(note.body));
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -40,6 +40,53 @@ function parseNote(note: Note, ctx: RenderContext): Root {
     .use(remarkMermaid, ctx);
   const tree = processor.parse(source);
   return processor.runSync(tree) as Root;
+}
+
+/**
+ * Obsidian accepts multi-line display math with TeX on the fence lines
+ * (`$$\begin{aligned}` … `\end{aligned}$$`). remark-math reads the opening
+ * line like a code fence — the TeX becomes ignored "meta" — and never finds the
+ * close, so the block swallows the rest of the note. Move that TeX onto its own
+ * lines, keeping any callout `>` prefix. Code fences are left alone.
+ */
+function splitMathFences(source: string): string {
+  const out: string[] = [];
+  let code: string | null = null; // open code fence marker
+  let inMath = false;
+  for (const line of source.split('\n')) {
+    const [, prefix, rest] = /^([ \t]*(?:>[ \t]?)*)(.*)$/s.exec(line)!;
+    const fence = /^(`{3,}|~{3,})/.exec(rest.trimStart());
+    if (code) {
+      if (fence && fence[1][0] === code[0] && fence[1].length >= code.length) code = null;
+      out.push(line);
+      continue;
+    }
+    if (fence && !inMath) {
+      code = fence[1];
+      out.push(line);
+      continue;
+    }
+    if (!inMath) {
+      const open = /^([ \t]*)\$\$(?!\$)(.*)$/s.exec(rest);
+      if (open && !open[2].includes('$$')) {
+        inMath = true;
+        if (open[2].trim()) out.push(`${prefix}${open[1]}$$`, `${prefix}${open[2]}`);
+        else out.push(line);
+        continue;
+      }
+      out.push(line);
+      continue;
+    }
+    const close = /^(.*?)\$\$\s*$/s.exec(rest);
+    if (close) {
+      inMath = false;
+      if (close[1].trim()) out.push(`${prefix}${close[1]}`, `${prefix}$$`);
+      else out.push(line);
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join('\n');
 }
 
 /**
