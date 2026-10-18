@@ -34,6 +34,11 @@ export interface ShelfBoard {
   blurb?: string;
 }
 
+export interface ShelfFilter {
+  type: string;
+  course: string;
+}
+
 export interface ShelfData {
   /** `books`: each book is a link (section shelf). `boards`: each module is a link (library hall). */
   mode: 'books' | 'boards';
@@ -714,11 +719,12 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   }
 
   // ---- filter ----
-  let filter = stage.dataset.filter ?? '';
-  function applyFilter(type: string, instant = false) {
-    filter = type;
+  // Filter by note type and/or course (a course is the shelf board a book sits on).
+  let filter: ShelfFilter = { type: stage.dataset.filter ?? '', course: stage.dataset.course ?? '' };
+  function applyFilter(f: ShelfFilter, instant = false) {
+    filter = f;
     for (const b of books) {
-      b.filtered = !!type && b.data.type !== type;
+      b.filtered = (!!f.type && b.data.type !== f.type) || (!!f.course && b.board.id !== f.course);
       if (b.link) {
         b.link.toggleAttribute('data-dim', b.filtered);
         b.link.tabIndex = b.filtered ? -1 : 0;
@@ -728,7 +734,10 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     if (hovered?.filtered) setHover(null);
     kick();
   }
-  stage.addEventListener('shelf-filter', (e) => applyFilter((e as CustomEvent<string>).detail ?? ''));
+  stage.addEventListener('shelf-filter', (e) => {
+    const d = (e as CustomEvent<string | Partial<ShelfFilter>>).detail;
+    applyFilter(typeof d === 'string' ? { type: d, course: '' } : { type: d?.type ?? '', course: d?.course ?? '' });
+  });
 
   // ---- selection: pull the book out, turn its cover to the reader, open it ----
   const tweens: Tween[] = [];

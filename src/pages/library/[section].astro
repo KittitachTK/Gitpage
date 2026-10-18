@@ -32,6 +32,12 @@ const shelf: ShelfData = {
     .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
     .map(([label, notes]) => ({ id: label, label, color: colorVar(sec.color), books: notes.map(shelfBook) })),
 };
+// Course chips: one per shelf; the course index note (type: course) supplies the code and full title.
+const courses = shelf.boards.map((b) => {
+  const index = rows.get(b.id)!.find((n) => n.type === 'course');
+  const code = index?.frontmatter?.code as string | undefined;
+  return { id: b.id, label: b.label, code, title: index?.title ?? b.label, count: rows.get(b.id)!.length };
+});
 ---
 
 <BaseLayout title={sec.label} nav="library">
@@ -41,20 +47,36 @@ const shelf: ShelfData = {
       <h1 data-vt-title>{sec.label}</h1>
       <p>{sec.blurb}</p>
     </header>
-    {
-      types.length > 1 && (
-        <div class="type-filter" role="group" aria-label="Filter by note type" slot="toolbar">
-          <button type="button" class="type-chip" data-type="" aria-pressed="true">All <small>{all.length}</small></button>
-          {types.map(([t, c]) => (
-            <button type="button" class="type-chip" data-type={t} aria-pressed="false">{t} <small>{c}</small></button>
-          ))}
-        </div>
-      )
-    }
+    <div class="filters" slot="toolbar">
+      {
+        courses.length > 1 && (
+          <div class="type-filter course-filter" role="group" aria-label="Filter by course">
+            <span class="filter-label">Course</span>
+            <button type="button" class="type-chip" data-course="" aria-pressed="true">All <small>{all.length}</small></button>
+            {courses.map((c) => (
+              <button type="button" class="type-chip" data-course={c.id} aria-pressed="false" title={c.title}>
+                {c.code && <span class="chip-code">{c.code}</span>}{c.label} <small>{c.count}</small>
+              </button>
+            ))}
+          </div>
+        )
+      }
+      {
+        types.length > 1 && (
+          <div class="type-filter" role="group" aria-label="Filter by note type">
+            <span class="filter-label">Type</span>
+            <button type="button" class="type-chip" data-type="" aria-pressed="true">All <small>{all.length}</small></button>
+            {types.map(([t, c]) => (
+              <button type="button" class="type-chip" data-type={t} aria-pressed="false">{t} <small>{c}</small></button>
+            ))}
+          </div>
+        )
+      }
+    </div>
     <div class="by-type">
       {
         shelf.boards.map((board) => (
-          <section class="side-group">
+          <section class="side-group" data-course={board.id}>
             <h2 class="side-group-title">
               <span class="section-dot" style={`--dot:${sec.color}`} />
               {board.label} <small>{rows.get(board.id)!.length}</small>
@@ -68,37 +90,51 @@ const shelf: ShelfData = {
 </BaseLayout>
 
 <script>
-  // Filter the list by note type; the choice is kept in ?type= so it can be shared.
-  const chips = [...document.querySelectorAll<HTMLButtonElement>('.type-chip')];
-  const items = [...document.querySelectorAll<HTMLElement>('.by-type .note-list li')];
-  const apply = (type: string) => {
-    if (type && !chips.some((c) => c.dataset.type === type)) type = '';
-    for (const c of chips) c.setAttribute('aria-pressed', String(c.dataset.type === type));
-    for (const li of items) li.hidden = !!type && li.dataset.type !== type;
-    // Shelf groups with nothing left to show fold away.
-    for (const g of document.querySelectorAll<HTMLElement>('.side-group')) g.hidden = ![...g.querySelectorAll('li')].some((li) => !li.hidden);
+  // Filter the list by course and/or note type; the choice is kept in ?course= / ?type= so it can be shared.
+  const typeChips = [...document.querySelectorAll<HTMLButtonElement>('.type-chip[data-type]')];
+  const courseChips = [...document.querySelectorAll<HTMLButtonElement>('.type-chip[data-course]')];
+  const groups = [...document.querySelectorAll<HTMLElement>('.by-type .side-group')];
+  const state = { type: '', course: '' };
+  const apply = () => {
+    if (state.type && !typeChips.some((c) => c.dataset.type === state.type)) state.type = '';
+    if (state.course && !courseChips.some((c) => c.dataset.course === state.course)) state.course = '';
+    for (const c of typeChips) c.setAttribute('aria-pressed', String(c.dataset.type === state.type));
+    for (const c of courseChips) c.setAttribute('aria-pressed', String(c.dataset.course === state.course));
+    for (const g of groups) {
+      const inCourse = !state.course || g.dataset.course === state.course;
+      for (const li of g.querySelectorAll<HTMLElement>('.note-list li')) li.hidden = !inCourse || (!!state.type && li.dataset.type !== state.type);
+      // Shelf groups with nothing left to show fold away.
+      g.hidden = ![...g.querySelectorAll('li')].some((li) => !li.hidden);
+    }
     // The 3D shelf dims the volumes that don't match instead of hiding them.
     const stage = document.querySelector<HTMLElement>('.shelf-stage');
     if (stage) {
-      stage.dataset.filter = type;
-      stage.dispatchEvent(new CustomEvent('shelf-filter', { detail: type }));
+      stage.dataset.filter = state.type;
+      stage.dataset.course = state.course;
+      stage.dispatchEvent(new CustomEvent('shelf-filter', { detail: { ...state } }));
     }
+    const url = new URL(location.href);
+    for (const k of ['type', 'course'] as const) {
+      if (state[k]) url.searchParams.set(k, state[k]);
+      else url.searchParams.delete(k);
+    }
+    history.replaceState(null, '', url);
   };
-  for (const c of chips) {
-    c.addEventListener('click', () => {
-      const type = c.dataset.type!;
-      apply(type);
-      const url = new URL(location.href);
-      if (type) url.searchParams.set('type', type);
-      else url.searchParams.delete('type');
-      history.replaceState(null, '', url);
-    });
-  }
-  apply(new URL(location.href).searchParams.get('type') ?? '');
+  for (const c of typeChips) c.addEventListener('click', () => ((state.type = c.dataset.type!), apply()));
+  for (const c of courseChips) c.addEventListener('click', () => ((state.course = c.dataset.course!), apply()));
+  const params = new URL(location.href).searchParams;
+  state.type = params.get('type') ?? '';
+  state.course = params.get('course') ?? '';
+  apply();
 </script>
 
 <style>
-  .type-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; }
+  .filters { display: grid; gap: 8px; margin: 0 0 18px; }
+  .type-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .filter-label { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); min-width: 4.5em; }
+  .course-filter .type-chip { text-transform: none; }
+  .chip-code { color: var(--text-faint); margin-right: 5px; }
+  .type-chip[aria-pressed='true'] .chip-code { color: inherit; opacity: 0.75; }
   .type-chip {
     font: inherit; font-family: var(--font-mono); font-size: 0.72rem; text-transform: capitalize; cursor: pointer;
     color: var(--text-muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px;

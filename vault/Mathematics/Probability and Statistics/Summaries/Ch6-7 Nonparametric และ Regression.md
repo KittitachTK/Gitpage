@@ -933,4 +933,5 @@ $$\hat Y=103.097+1.440X_1-0.614X_4$$
 > ⬅️ ก่อนหน้า: [[Ch5.2 ANOVA และ Chi-Square]]
 > 📝 ฉบับย่อเน้นทำข้อสอบบท 5–7: [[สรุปสถิติ บท5-7 (เตรียมสอบ)]]
 > 🔗 [[สรุปสถิติ บท5-7 (เตรียมสอบ)#บทที่ 6 การทดสอบแบบไม่ใช้พารามิเตอร์ (Non-parametric)|Nonparametric ฉบับสอบ]] · [[สรุปสถิติ บท5-7 (เตรียมสอบ)#7.6 การอ่าน output SPSS (Regression) — 3 ตารางหลัก|อ่าน output Regression]] · [[สรุปสถิติ บท5-7 (เตรียมสอบ)#ข้อ 3  Regression (อ่าน output + เติมคำ)|แบบฝึก Regression]]
+> 🖥️ ฝึกอ่าน output SPSS: [[SPSS Output จำลอง Ch5.2-7 + วิธีอ่านผล]]
 > 🏠 [[Probability and Statistics]]
