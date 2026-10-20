@@ -569,6 +569,8 @@ html[data-motion='off'] *::after { animation: none !important; transition: none 
   .motion-toggle { margin-left: auto; }
   .menu-toggle { margin-left: 0; }
 }
+.nav a { white-space: nowrap; }
+@media (max-width: 1240px) { .brand small { display: none; } .header-search input { width: 170px; } }
 @media (max-width: 520px) { .brand small { display: none; } }
 
 /* ---- page transitions (cross-document View Transitions) ------------------
