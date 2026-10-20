@@ -26,53 +26,58 @@ import OrbitLoader from '../components/OrbitLoader.astro';
 
 <script>
   import { escapeHtml, highlight, loadSearch, snippet } from '../scripts/search';
+  import { onPage } from '../scripts/lifecycle';
 
-  const base = document.documentElement.dataset.base!;
-  const input = document.querySelector<HTMLInputElement>('#search-page-input')!;
-  const list = document.querySelector<HTMLUListElement>('#search-results')!;
-  const status = document.querySelector<HTMLElement>('#search-status')!;
-  const loading = document.querySelector<HTMLElement>('.search-loading')!;
+  onPage(() => {
+    if (!document.querySelector('#search-page-input')) return;
+    const base = document.documentElement.dataset.base!;
+    const input = document.querySelector<HTMLInputElement>('#search-page-input')!;
+    const list = document.querySelector<HTMLUListElement>('#search-results')!;
+    const status = document.querySelector<HTMLElement>('#search-status')!;
+    const loading = document.querySelector<HTMLElement>('.search-loading')!;
 
-  input.value = new URLSearchParams(location.search).get('q') ?? '';
+    input.value = new URLSearchParams(location.search).get('q') ?? '';
 
-  async function run() {
-    const q = input.value.trim();
-    const url = new URL(location.href);
-    if (q) url.searchParams.set('q', q);
-    else url.searchParams.delete('q');
-    history.replaceState(null, '', url);
-    if (!q) {
-      list.innerHTML = '';
-      status.textContent = '';
-      return;
+    async function run() {
+      const q = input.value.trim();
+      const url = new URL(location.href);
+      if (q) url.searchParams.set('q', q);
+      else url.searchParams.delete('q');
+      history.replaceState(null, '', url);
+      if (!q) {
+        list.innerHTML = '';
+        status.textContent = '';
+        return;
+      }
+      // Only the first search waits for the index; show the loader if that takes a moment.
+      const slow = setTimeout(() => (loading.hidden = false), 150);
+      const engine = await loadSearch(base);
+      clearTimeout(slow);
+      loading.hidden = true;
+      let hits = engine.search(q);
+      if (!hits.length) hits = engine.search(q, { combineWith: 'OR' });
+      status.textContent = `${hits.length} result${hits.length === 1 ? '' : 's'}`;
+      list.innerHTML = hits
+        .slice(0, 50)
+        .map(
+          (h, i) => `<li style="--i:${i}"><a href="${base}${h.slug}">
+            <span class="t">${highlight(h.title, q)}</span>
+            <span class="p">${escapeHtml(h.path || 'Archive')}</span>
+            <span class="s">${highlight(snippet(h.text || h.excerpt, q), q)}</span>
+          </a></li>`,
+        )
+        .join('');
     }
-    // Only the first search waits for the index; show the loader if that takes a moment.
-    const slow = setTimeout(() => (loading.hidden = false), 150);
-    const engine = await loadSearch(base);
-    clearTimeout(slow);
-    loading.hidden = true;
-    let hits = engine.search(q);
-    if (!hits.length) hits = engine.search(q, { combineWith: 'OR' });
-    status.textContent = `${hits.length} result${hits.length === 1 ? '' : 's'}`;
-    list.innerHTML = hits
-      .slice(0, 50)
-      .map(
-        (h, i) => `<li style="--i:${i}"><a href="${base}${h.slug}">
-          <span class="t">${highlight(h.title, q)}</span>
-          <span class="p">${escapeHtml(h.path || 'Archive')}</span>
-          <span class="s">${highlight(snippet(h.text || h.excerpt, q), q)}</span>
-        </a></li>`,
-      )
-      .join('');
-  }
 
-  let timer: number | undefined;
-  input.addEventListener('input', () => {
-    clearTimeout(timer);
-    timer = window.setTimeout(run, 120);
+    let timer: number | undefined;
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(run, 120);
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') list.querySelector('a')?.click();
+    });
+    run();
+    return () => clearTimeout(timer);
   });
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') list.querySelector('a')?.click();
-  });
-  run();
 </script>

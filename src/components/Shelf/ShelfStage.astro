@@ -10,6 +10,7 @@
  */
 import '../../styles/shelf.css';
 import type { ShelfData } from '../../scripts/shelf';
+import { notesLabel } from '../../lib/site';
 
 interface Props {
   data: ShelfData;
@@ -29,7 +30,7 @@ const json = JSON.stringify(data).replace(/</g, '\\u003c');
       {
         data.mode === 'books'
           ? data.boards.map((board) => (
-              <div class="shelf-row" role="group" aria-label={`${board.label} · ${board.books.length} notes`}>
+              <div class="shelf-row" role="group" aria-label={`${board.label} · ${notesLabel(board.books.length)}`}>
                 {board.books.map((b) => (
                   <a class="shelf-link" href={b.url} data-id={b.id} data-type={b.type}>
                     <span class="shelf-link-title">{b.title}</span>
@@ -41,7 +42,7 @@ const json = JSON.stringify(data).replace(/</g, '\\u003c');
           : data.boards.map((board) => (
               <a class="shelf-link shelf-module" href={board.url} data-id={board.id} style={`--dot:var(${board.color})`}>
                 <span class="shelf-module-label">
-                  <span class="shelf-module-count"><span class="section-dot" />{board.count ?? board.books.length} notes</span>
+                  <span class="shelf-module-count"><span class="section-dot" />{notesLabel(board.count ?? board.books.length)}</span>
                   <span class="shelf-module-name">{board.label}</span>
                 </span>
               </a>
@@ -79,8 +80,11 @@ const json = JSON.stringify(data).replace(/</g, '\\u003c');
 
 <script>
   import type { ShelfData } from '../../scripts/shelf';
+  import { onPage } from '../../scripts/lifecycle';
 
-  for (const view of document.querySelectorAll<HTMLElement>('.shelf-view')) {
+  onPage(() => {
+    const view = document.querySelector<HTMLElement>('.shelf-view');
+    if (!view) return;
     const stage = view.querySelector<HTMLElement>('.shelf-stage')!;
 
     // Set by the Creation on the home page (or another shelf) just before it navigated here; consumed once.
@@ -99,18 +103,27 @@ const json = JSON.stringify(data).replace(/</g, '\\u003c');
         return !!(c.getContext('webgl2') || c.getContext('webgl'));
       } catch { return false; }
     })();
-
-    if (!webgl) fallback();
-    else {
-      // Fonts for the book spines first (or give up waiting after a moment), then Three.js.
-      const data = JSON.parse(stage.querySelector('.shelf-data')!.textContent!) as ShelfData;
-      const fonts = Promise.all([
-        document.fonts.load('500 32px "Cormorant Garamond"'),
-        document.fonts.load('500 32px "Noto Serif Thai"', 'กขค'),
-        document.fonts.load('600 16px "Cinzel"'),
-      ]).catch(() => {});
-      const timeout = new Promise((r) => setTimeout(r, 2000));
-      Promise.all([import('../../scripts/shelf'), Promise.race([fonts, timeout])]).then(([{ mountShelf }]) => mountShelf(stage, data));
+    if (!webgl) {
+      fallback();
+      return;
     }
-  }
+
+    // Fonts for the book spines first (or give up waiting after a moment), then Three.js.
+    let dispose: (() => void) | undefined;
+    let gone = false;
+    const data = JSON.parse(stage.querySelector('.shelf-data')!.textContent!) as ShelfData;
+    const fonts = Promise.all([
+      document.fonts.load('500 32px "Cormorant Garamond"'),
+      document.fonts.load('500 32px "Noto Serif Thai"', 'กขค'),
+      document.fonts.load('600 16px "Cinzel"'),
+    ]).catch(() => {});
+    const timeout = new Promise((r) => setTimeout(r, 2000));
+    Promise.all([import('../../scripts/shelf'), Promise.race([fonts, timeout])]).then(([{ mountShelf }]) => {
+      if (!gone) dispose = mountShelf(stage, data) ?? undefined;
+    });
+    return () => {
+      gone = true;
+      dispose?.();
+    };
+  });
 </script>

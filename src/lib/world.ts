@@ -8,6 +8,8 @@
  * shelves, to the tree of knowledge.
  */
 
+import { SPOTS } from './garden';
+
 export interface Pose {
   /** Point of the painting at the centre of attention, 0–1 (object-position). */
   x: number;
@@ -27,32 +29,44 @@ const pose = (x: number, y: number, z: number, veil = 0, night = 0, light = 0): 
 /** Sky above the garden: where the descent from the home fresco begins. */
 export const HEAVEN = pose(0.5, 0, 1.7, 0, 0, 1);
 
-/** Section shelves stand in different parts of the garden. */
-const SHELVES: Record<string, Pose> = {
-  mathematics: pose(0.16, 0.5, 1.45, 0.08),          // the palm grove, left
-  physics: pose(0.55, 0.42, 1.7, 0.1),               // mountain and waterfall
-  'computer-science': pose(0.86, 0.5, 1.45, 0.08),   // the great tree, right
-  research: pose(0.3, 0.86, 1.6, 0.08),              // the spring among the rocks
-  ideas: pose(0.66, 0.82, 1.6, 0.08),                // the flowering meadow
-};
 const GARDEN = pose(0.5, 0.66, 1.08, 0.06);
+const atSpot = (name: string): Pose => {
+  const s = SPOTS.find((x) => x.name === name);
+  return s ? pose(s.x, s.y, s.z, 0.08) : GARDEN;
+};
 
-/** Scene key → pose. `shelf:<slug>` and `note:<slug>` follow the section. */
+/**
+ * Scene key → pose. Subjects stand at garden spots (lib/garden.ts), so pages pass
+ * the spot, not the subject: `shelf:<spot>` (its shelves) and `note:<spot>` (reading).
+ */
 export function scenePose(scene: string): Pose {
-  const [kind, slug = ''] = scene.split(':');
-  const shelf = SHELVES[slug] ?? GARDEN;
+  const [kind, spot = ''] = scene.split(':');
   switch (kind) {
     case 'home': return pose(0.5, 0.02, 1.6, 0.86);
     case 'garden': return GARDEN;
-    case 'shelf': return shelf;
-    case 'note': return { ...shelf, z: shelf.z + 0.15, veil: 0.9 };
+    case 'shelf': return atSpot(spot);
+    case 'note': { const p = atSpot(spot); return { ...p, z: p.z + 0.15, veil: 0.9 }; }
     case 'tree': return pose(0.9, 0.24, 1.35, 0.05, 0.62);
-    case 'research': return { ...SHELVES.research, veil: 0.78 };
-    case 'ideas': return { ...SHELVES.ideas, veil: 0.78 };
+    case 'research': return { ...atSpot('spring'), veil: 0.78 };
+    case 'ideas': return { ...atSpot('meadow'), veil: 0.78 };
     case 'exile': return pose(0.03, 0.96, 1.25, 0.12, 0.45);
     default: return { ...GARDEN, veil: 0.8 };
   }
 }
+
+/**
+ * The 3D world (scripts/world.ts) shows the home page on the Creation fresco and every
+ * other page in the garden; the 2D backdrop uses `scenePose` for all of them.
+ */
+export function worldScene(scene: string): { name: 'creation' | 'garden'; pose: Pose } {
+  if (scene.split(':')[0] === 'home') return { name: 'creation', pose: pose(0.44, 0.46, 1) };
+  return { name: 'garden', pose: scenePose(scene) };
+}
+
+export const parsePose = (attr: string): Pose => {
+  const [x, y, z, veil, night, light] = attr.split(',').map(Number);
+  return { x, y, z, veil, night, light };
+};
 
 export const poseAttr = (p: Pose) => [p.x, p.y, p.z, p.veil, p.night, p.light].join(',');
 export const HEAVEN_ATTR = poseAttr(HEAVEN);

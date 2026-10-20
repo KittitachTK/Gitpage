@@ -53,39 +53,50 @@ const secs = sections(vault).filter((s) => s.notes.length);
 
 <script>
   import { mountGraph } from '../scripts/graph';
+  import { onPage } from '../scripts/lifecycle';
 
-  const base = document.documentElement.dataset.base!;
-  const canvas = document.querySelector<HTMLCanvasElement>('.universe-canvas')!;
-  const hoverEl = document.querySelector<HTMLElement>('.u-hover')!;
-  const stats = document.querySelector<HTMLElement>('.u-stats')!;
-  const total = stats.textContent;
+  onPage(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>('.universe-canvas');
+    if (!canvas) return;
+    const base = document.documentElement.dataset.base!;
+    const hoverEl = document.querySelector<HTMLElement>('.u-hover')!;
+    const stats = document.querySelector<HTMLElement>('.u-stats')!;
+    const total = stats.textContent;
+    const input = document.querySelector<HTMLInputElement>('#u-filter')!;
+    const loading = document.querySelector<HTMLElement>('.u-loading')!;
+    let graph: ReturnType<typeof mountGraph> | undefined;
+    let gone = false;
+    let timer: number | undefined;
 
-  const input = document.querySelector<HTMLInputElement>('#u-filter')!;
-  const loading = document.querySelector<HTMLElement>('.u-loading')!;
-
-  fetch(`${base}graph.json`)
-    .then((r) => r.json())
-    .then((data) => {
-      loading.classList.add('done');
-      setTimeout(() => (loading.hidden = true), 600);
-      const graph = mountGraph(canvas, data, {
-        base,
-        galaxies: true,
-        labelDegree: 4,
-        intro: 'bang',
-        ambient: true,
-        drift: true,
-        systemLabels: true,
-        onHover: (n) => (hoverEl.textContent = n ? n.title : ''),
+    fetch(`${base}graph.json`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (gone) return;
+        loading.classList.add('done');
+        setTimeout(() => (loading.hidden = true), 600);
+        graph = mountGraph(canvas, data, {
+          base,
+          galaxies: true,
+          labelDegree: 4,
+          intro: 'bang',
+          ambient: true,
+          drift: true,
+          systemLabels: true,
+          onHover: (n) => (hoverEl.textContent = n ? n.title : ''),
+        });
+        // Debounced so the camera glides to the result instead of jittering per keystroke.
+        input.addEventListener('input', () => {
+          clearTimeout(timer);
+          timer = window.setTimeout(() => {
+            const n = graph!.setFilter(input.value);
+            stats.textContent = input.value.trim() ? `${n} matching fruits` : total;
+          }, 160);
+        });
       });
-      // Debounced so the camera glides to the result instead of jittering per keystroke.
-      let timer: number | undefined;
-      input.addEventListener('input', () => {
-        clearTimeout(timer);
-        timer = window.setTimeout(() => {
-          const n = graph.setFilter(input.value);
-          stats.textContent = input.value.trim() ? `${n} matching fruits` : total;
-        }, 160);
-      });
-    });
+    return () => {
+      gone = true;
+      clearTimeout(timer);
+      graph?.destroy();
+    };
+  });
 </script>

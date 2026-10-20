@@ -72,7 +72,8 @@ export function reveal(elements: Iterable<HTMLElement>, stagger = 70) {
   }, { rootMargin: '0px 0px -8% 0px' });
   list.forEach((el) => io.observe(el));
   // Turning motion off mid-way shows everything at once.
-  onMotionChange((on) => { if (!on) list.forEach((el) => { io.unobserve(el); el.classList.remove('reveal', 'revealed'); el.style.transitionDelay = ''; }); });
+  const off = onMotionChange((on) => { if (!on) list.forEach((el) => { io.unobserve(el); el.classList.remove('reveal', 'revealed'); el.style.transitionDelay = ''; }); });
+  return () => { io.disconnect(); off(); };
 }
 
 /** Count a number up from zero (text content), easing out. */

@@ -28,14 +28,11 @@ export const BASE = normaliseBase(process.env.BASE_PATH ?? '/');
 /** Folders and files the scanner never publishes (notes with `publish: false` are skipped too). */
 export const IGNORE = ['.obsidian', '.trash', '.git', 'node_modules', 'Templates', 'Private'];
 
-/** Top-level sections, in display order. Unlisted top-level folders go under "Other". */
-export const SECTIONS: { folder: string; label: string; blurb: string }[] = [
-  { folder: 'Mathematics', label: 'Mathematics', blurb: 'Structures, proofs and abstractions.' },
-  { folder: 'Physics', label: 'Theoretical Physics', blurb: 'Fields, symmetries and the laws of nature.' },
-  { folder: 'Computer Science', label: 'Computer Science', blurb: 'Computation, algorithms and systems.' },
-  { folder: 'Research', label: 'Research', blurb: 'Active projects, logs and open questions.' },
-  { folder: 'Ideas', label: 'Ideas', blurb: 'Conjectures, sketches and half-formed thoughts.' },
-];
+/*
+ * Subjects (Library sections) are not listed here: every top-level vault folder
+ * with notes is one, styled by lib/garden.ts (optionally from a `type: section`
+ * folder note). Add or remove a folder and the site follows.
+ */
 
 /** Allowed values for the `status` frontmatter field (validated in CI). */
 export const STATUSES = ['seed', 'studying', 'draft', 'active', 'paused', 'complete', 'archived'];

@@ -1,0 +1,27 @@
+{
+ "width": 2400,
+ "height": 1089,
+ "near": 7.2,
+ "far": 10,
+ "gap": [
+  0.3788,
+  0.4553
+ ],
+ "layers": [
+  {
+   "file": "wall.webp",
+   "depth": "wall-depth.png",
+   "coverage": 1.0
+  },
+  {
+   "file": "adam.webp",
+   "depth": "adam-depth.png",
+   "coverage": 0.184
+  },
+  {
+   "file": "god.webp",
+   "depth": "god-depth.png",
+   "coverage": 0.239
+  }
+ ]
+}

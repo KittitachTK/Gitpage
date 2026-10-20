@@ -3,7 +3,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ShelfStage from '../../components/Shelf/ShelfStage.astro';
 import { colorVar, shelfBook } from '../../components/Shelf/data';
 import { href } from '../../lib/config';
-import { recent, sections } from '../../lib/site';
+import { notesLabel, recent, sections } from '../../lib/site';
 import { getVault } from '../../lib/vault/vault';
 import type { ShelfData } from '../../scripts/shelf';
 
@@ -40,7 +40,7 @@ const hall: ShelfData = {
         secs.map((s) => (
           <li>
             <a class="hall-item" href={href(`library/${s.slug}`)} style={`--dot:${s.color}`} data-empty={s.notes.length ? undefined : ''}>
-              <span class="hall-count"><span class="section-dot" />{s.notes.length} notes</span>
+              <span class="hall-count"><span class="section-dot" />{notesLabel(s.notes.length)}</span>
               <h3 data-vt-title>{s.label}</h3>
               <p>{s.blurb}</p>
             </a>

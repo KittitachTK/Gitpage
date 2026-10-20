@@ -95,7 +95,7 @@ export function mountPollen(canvas: HTMLCanvasElement, opts: PollenOptions = {})
   size();
 
   let since = 0;
-  animateWhileVisible(canvas, (_, dt) => {
+  const stop = animateWhileVisible(canvas, (_, dt) => {
     const s = dt / 1000;
     t += s;
     const night = opts.night?.() ?? 0;
@@ -113,5 +113,5 @@ export function mountPollen(canvas: HTMLCanvasElement, opts: PollenOptions = {})
     draw();
   }, draw);
 
-  return { redraw: draw };
+  return { redraw: draw, destroy: () => { stop(); ro.disconnect(); } };
 }

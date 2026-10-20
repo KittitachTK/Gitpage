@@ -18,6 +18,7 @@ import {
   forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY,
   type Simulation, type SimulationLinkDatum, type SimulationNodeDatum,
 } from 'd3-force';
+import { navigate } from 'astro:transitions/client';
 import { animateWhileVisible, motionEnabled, onMotionChange } from './motion';
 
 export interface GNode extends SimulationNodeDatum {
@@ -25,6 +26,8 @@ export interface GNode extends SimulationNodeDatum {
   title: string;
   slug: string;
   section: string;
+  /** CSS custom property with the subject's colour (generated from the vault). */
+  color?: string;
   /** "Section/Course" folder — a star system. */
   group?: string;
   degree: number;
@@ -60,13 +63,6 @@ export interface GraphOptions {
   onHover?(node: GNode | null): void;
 }
 
-const SECTION_VARS: Record<string, string> = {
-  Mathematics: '--sec-mathematics',
-  Physics: '--sec-physics',
-  'Computer Science': '--sec-computer-science',
-  Research: '--sec-research',
-  Ideas: '--sec-ideas',
-};
 
 interface Anim {
   /** Entrance progress 0→1. */
@@ -92,8 +88,10 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
   // page theme applies; they are re-read when the theme is switched.
   const css = getComputedStyle(canvas);
   const colorCache = new Map<string, string>();
+  // Subject → colour variable, read off the nodes (subjects come and go with the vault).
+  const colorVarOf = new Map(data.nodes.map((n) => [n.section, n.color ?? '--sec-other']));
   const color = (section: string) => {
-    if (!colorCache.has(section)) colorCache.set(section, css.getPropertyValue(SECTION_VARS[section] ?? '--sec-other').trim() || '#8e939c');
+    if (!colorCache.has(section)) colorCache.set(section, css.getPropertyValue(colorVarOf.get(section) ?? '--sec-other').trim() || css.getPropertyValue('--sec-other').trim() || '#9c9888');
     return colorCache.get(section)!;
   };
   let textColor = '', faint = '', linkColor = '';
@@ -522,10 +520,11 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
     leaving = true;
     const r = rotated(n.x!, n.y!);
     const k = Math.min(4, Math.max(view.k * 2.2, 2.6));
-    moveCamera({ x: -r.x * k, y: -r.y * k, k }, 650, () => { window.location.href = opts.base + n.slug; });
+    moveCamera({ x: -r.x * k, y: -r.y * k, k }, 650, () => navigate(opts.base + n.slug));
   }
   // Coming back via the back/forward cache: allow flying again.
-  addEventListener('pageshow', (e) => { if (e.persisted) { leaving = false; fit(); invalidate(); } });
+  const onShow = (e: PageTransitionEvent) => { if (e.persisted) { leaving = false; fit(); invalidate(); } };
+  addEventListener('pageshow', onShow);
 
   const pointers = new Map<number, { x: number; y: number }>();
   let drag: { node: GNode | null; sx: number; sy: number; vx: number; vy: number; moved: boolean } | null = null;
@@ -598,7 +597,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       // Inside a link the link itself navigates (keyboard-accessible, view transition).
       const go = !drag.moved && e.type === 'pointerup' && !canvas.closest('a');
       drag = null;
-      if (go) window.location.href = opts.base + 'universe';
+      if (go) navigate(opts.base + 'universe');
       return;
     }
     const { node, moved } = drag;
@@ -672,6 +671,6 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       return filter?.size ?? nodes.length;
     },
     fit() { fit(); invalidate(); },
-    destroy() { sim.stop(); ro.disconnect(); stopLoop(); offMotion(); document.removeEventListener('themechange', onTheme); },
+    destroy() { sim.stop(); ro.disconnect(); stopLoop(); offMotion(); document.removeEventListener('themechange', onTheme); removeEventListener('pageshow', onShow); },
   };
 }

@@ -72,14 +72,14 @@ const shelfSection = note.folders.length ? sections(vault).find((s) => s.notes.i
 const shelfUrl = shelfSection && href(`library/${shelfSection.slug}?book=${encodeURIComponent(note.slug)}`);
 ---
 
-<BaseLayout title={note.title} description={note.excerpt || `${note.title} — ${note.folders.join(' / ') || 'Knowledge archive'}`} scene={`note:${shelfSection?.slug ?? ''}`}>
+<BaseLayout title={note.title} description={note.excerpt || `${note.title} — ${note.folders.join(' / ') || 'Knowledge archive'}`} scene={`note:${shelfSection?.spot.name ?? ''}`}>
   <div class="note-layout">
     <aside class="note-sidebar tree" aria-label="Section contents">
       {
         sectionNotes.length > 0 && (
           <>
             <div class="aside-block">
-              <h2><span class="section-dot" style={`--dot:${sectionColor(note.section)}`} />{note.section}</h2>
+              <h2><span class="section-dot" style={`--dot:${sectionColor(note.section)}`} />{shelfSection?.label ?? note.section}</h2>
               <FolderTree tree={tree} current={note.slug} />
             </div>
           </>
@@ -299,24 +299,31 @@ const shelfUrl = shelfSection && href(`library/${shelfSection.slug}?book=${encod
     import { mountGraph } from '../scripts/graph';
     import { initCopyButtons, initReadingProgress, initToc } from '../scripts/reading';
     import { initLinkPreviews } from '../scripts/preview';
+    import { all, onPage } from '../scripts/lifecycle';
 
-    const canvas = document.querySelector<HTMLCanvasElement>('canvas.local-graph');
-    const data = document.getElementById('local-graph-data');
-    if (canvas && data && getComputedStyle(canvas).display !== 'none' && canvas.offsetParent) {
-      mountGraph(canvas, JSON.parse(data.textContent!), {
-        base: document.documentElement.dataset.base!,
-        focus: canvas.dataset.focus,
-        labelDegree: 0,
-        intro: 'fade',
-        // Neighbours orbit the current note slowly (it sits at the centre of rotation).
-        drift: 0.05,
-      });
-    }
-
-    initReadingProgress(document.querySelector<HTMLElement>('.read-progress')!, document.querySelector<HTMLElement>('.note-main')!);
-    const toc = document.querySelector<HTMLElement>('.toc');
-    if (toc) initToc(toc);
-    initLinkPreviews(document.querySelector('.note-main')!);
-    initCopyButtons(document.querySelector<HTMLElement>('.note-main')!);
+    onPage(() => {
+      const main = document.querySelector<HTMLElement>('.note-main');
+      if (!main) return;
+      const canvas = document.querySelector<HTMLCanvasElement>('canvas.local-graph');
+      const data = document.getElementById('local-graph-data');
+      const graph = canvas && data && getComputedStyle(canvas).display !== 'none' && canvas.offsetParent
+        ? mountGraph(canvas, JSON.parse(data.textContent!), {
+            base: document.documentElement.dataset.base!,
+            focus: canvas.dataset.focus,
+            labelDegree: 0,
+            intro: 'fade',
+            // Neighbours orbit the current note slowly (it sits at the centre of rotation).
+            drift: 0.05,
+          })
+        : undefined;
+      const toc = document.querySelector<HTMLElement>('.toc');
+      initCopyButtons(main);
+      return all(
+        initReadingProgress(document.querySelector<HTMLElement>('.read-progress')!, main),
+        toc ? initToc(toc) : undefined,
+        initLinkPreviews(main),
+        () => graph?.destroy(),
+      );
+    });
   </script>
 </BaseLayout>

@@ -71,6 +71,8 @@ export interface GraphNode {
   title: string;
   slug: string;
   section: string;
+  /** CSS custom property with the subject's colour, e.g. `--sec-mathematics`. */
+  color: string;
   group: string;
   degree: number;
   tags: string[];

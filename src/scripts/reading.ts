@@ -20,6 +20,11 @@ export function initReadingProgress(bar: HTMLElement, article: HTMLElement) {
   addEventListener('scroll', schedule, { passive: true });
   addEventListener('resize', schedule);
   update();
+  return () => {
+    removeEventListener('scroll', schedule);
+    removeEventListener('resize', schedule);
+    cancelAnimationFrame(raf);
+  };
 }
 
 /** Active TOC entry = last heading above the reading line; a marker glides to it. */
@@ -74,6 +79,11 @@ export function initToc(toc: HTMLElement) {
   addEventListener('scroll', schedule, { passive: true });
   addEventListener('resize', schedule);
   update();
+  return () => {
+    removeEventListener('scroll', schedule);
+    removeEventListener('resize', schedule);
+    cancelAnimationFrame(raf);
+  };
 }
 
 /** A "Copy" button on every code block (not diagrams or maths). */

@@ -7,3 +7,8 @@ public/vault/
 vault/.obsidian/workspace*.json
 vault/.trash/
 .DS_Store
+
+# Art pipeline (tools/art): local Python env and downloaded source paintings
+tools/art/.venv/
+tools/art/.cache/
+__pycache__/

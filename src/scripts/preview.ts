@@ -163,8 +163,17 @@ export function initLinkPreviews(root: ParentNode = document) {
   // Moving into the card keeps it open (to scroll it or click a link inside).
   pop.addEventListener('pointerenter', () => clearTimeout(closeTimer));
   pop.addEventListener('pointerleave', () => { closeTimer = window.setTimeout(hide, CLOSE_DELAY); });
-  addEventListener('scroll', () => { if (!pop.hidden && !pop.matches(':hover')) hide(); }, { passive: true });
-  addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
+  const onScroll = () => { if (!pop.hidden && !pop.matches(':hover')) hide(); };
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') hide(); };
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('keydown', onKey);
   // Following a link closes it.
   root.addEventListener('click', hide);
+  return () => {
+    clearTimeout(openTimer);
+    clearTimeout(closeTimer);
+    removeEventListener('scroll', onScroll);
+    removeEventListener('keydown', onKey);
+    pop.remove();
+  };
 }

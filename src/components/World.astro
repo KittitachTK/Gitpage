@@ -1,0 +1,187 @@
+---
+/**
+ * The painted world behind every page. It persists across ClientRouter navigations
+ * (transition:persist), so moving through the site is one continuous camera move.
+ *
+ *   3D  scripts/world.ts: the Creation fresco as a relief (home) and Thomas Cole's
+ *       Garden of Eden as a depth diorama (every other page), on one WebGL canvas.
+ *   2D  the garden painting panned and zoomed with CSS (the poses in lib/world.ts).
+ *       Used without WebGL, with motion off, or when the device asks to save data.
+ *
+ * Each page states its scene on <html data-scene data-pose> (BaseLayout); on every
+ * page load the world moves there. Purely decorative.
+ */
+import { href } from '../lib/config';
+---
+
+<div class="world" transition:persist="world" data-mode="2d" aria-hidden="true">
+  <div class="w2d">
+    <img
+      class="w2d-painting"
+      src={href('art/eden-2400.webp')}
+      srcset={`${href('art/eden-1280.webp')} 1280w, ${href('art/eden-2400.webp')} 2400w`}
+      sizes="(max-aspect-ratio: 4/3) 220vh, 140vw"
+      alt=""
+      decoding="async"
+      fetchpriority="low"
+    />
+    <div class="w2d-night"></div>
+    <div class="w2d-veil"></div>
+    <canvas class="w2d-motes"></canvas>
+    <div class="w2d-light"></div>
+  </div>
+  <canvas class="w3d"></canvas>
+</div>
+
+<style is:global>
+  /* Each pose value is a registered number so the 2D walk eases smoothly between pages. */
+  @property --wx { syntax: '<number>'; inherits: true; initial-value: 0.5; }
+  @property --wy { syntax: '<number>'; inherits: true; initial-value: 0.66; }
+  @property --wz { syntax: '<number>'; inherits: true; initial-value: 1; }
+  @property --wv { syntax: '<number>'; inherits: true; initial-value: 0.8; }
+  @property --wn { syntax: '<number>'; inherits: true; initial-value: 0; }
+  @property --wl { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+  .world {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background: var(--bg);
+    view-transition-name: world;
+  }
+  .w3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 600ms var(--ease-out); }
+  .world[data-mode='3d'] .w3d { opacity: 1; }
+  .world[data-mode='3d'] .w2d { visibility: hidden; }
+
+  .w2d {
+    --ar: 1.3588; /* painting width / height */
+    --dur: 1.6s;
+    position: absolute; inset: 0; container-type: size;
+    transition:
+      --wx var(--dur) var(--ease-in-out), --wy var(--dur) var(--ease-in-out), --wz var(--dur) var(--ease-in-out),
+      --wv var(--dur) var(--ease-in-out), --wn var(--dur) var(--ease-in-out), --wl calc(var(--dur) * 0.8) var(--ease-in-out);
+  }
+  /* Coming down from the sky of the Creation is a longer, slower descent. */
+  .w2d[data-descent] { --dur: 3.2s; }
+  .w2d.instant { transition: none; }
+  .w2d-painting {
+    --iw: max(100cqw, 100cqh * var(--ar));
+    --ih: max(100cqh, 100cqw / var(--ar));
+    position: absolute; left: 0; top: 0; max-width: none;
+    width: var(--iw); height: var(--ih);
+    /* Like object-position: the point (x, y) of the painting lands at (x, y) of the screen, then zoom around it. */
+    translate: calc((100cqw - var(--iw)) * var(--wx)) calc((100cqh - var(--ih)) * var(--wy));
+    transform-origin: calc(var(--wx) * 100%) calc(var(--wy) * 100%);
+    scale: var(--wz);
+    filter: saturate(0.92) contrast(1.02);
+    opacity: 0; transition: opacity 900ms var(--ease-out);
+  }
+  .w2d-painting.loaded { opacity: 1; }
+  html.world-pending .w2d { visibility: hidden; }
+  .w2d-night { position: absolute; inset: 0; background: radial-gradient(ellipse at 70% 30%, #0b1210, #030504 80%); opacity: calc(var(--wn) * 0.85); }
+  .w2d-veil { position: absolute; inset: 0; background: var(--bg); opacity: var(--wv); }
+  .w2d-motes { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .w2d-light { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 42%, #fffdf6, #fbf0d6 55%, #f2dfae); opacity: var(--wl); }
+
+  /* The world never takes part in page transitions: it moves on its own. */
+  ::view-transition-group(world), ::view-transition-new(world) { animation: none; }
+  ::view-transition-old(world) { display: none; }
+</style>
+
+<script>
+  import { onMotionChange, motionEnabled } from '../scripts/motion';
+  import { mountPollen } from '../scripts/pollen';
+  import { parsePose, worldScene, type Pose } from '../lib/world';
+  import type { World } from '../scripts/world';
+
+  const el = document.querySelector<HTMLElement>('.world')!;
+  const root = document.documentElement;
+  const w2d = el.querySelector<HTMLElement>('.w2d')!;
+
+  // ---- 2D ------------------------------------------------------------------------------
+  const img = el.querySelector<HTMLImageElement>('.w2d-painting')!;
+  if (img.complete) img.classList.add('loaded');
+  else img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+  const num = (name: string) => parseFloat(getComputedStyle(w2d).getPropertyValue(name)) || 0;
+  mountPollen(el.querySelector<HTMLCanvasElement>('.w2d-motes')!, {
+    density: 1.1,
+    night: () => num('--wn'),
+    alpha: () => (el.dataset.mode === '2d' ? 1 - num('--wv') : 0),
+  });
+  const VARS = ['--wx', '--wy', '--wz', '--wv', '--wn', '--wl'] as const;
+  let shown2d = false;
+  function set2d(p: Pose, instant = false) {
+    // Arriving out of the Creation's light: a long descent.
+    if (num('--wl') > 0.5 && p.light < 0.5) {
+      w2d.dataset.descent = '';
+      setTimeout(() => delete w2d.dataset.descent, 3400);
+    }
+    if (instant || !shown2d || !motionEnabled()) {
+      w2d.classList.add('instant');
+      requestAnimationFrame(() => requestAnimationFrame(() => w2d.classList.remove('instant')));
+    }
+    [p.x, p.y, p.z, p.veil, p.night, p.light].forEach((v, i) => w2d.style.setProperty(VARS[i], String(v)));
+    shown2d = true;
+  }
+
+  // ---- 3D ------------------------------------------------------------------------------
+  const webgl = (() => {
+    try {
+      const c = document.createElement('canvas');
+      return !!c.getContext('webgl2');
+    } catch { return false; }
+  })();
+  const saveData = !!(navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+  const want3d = () => webgl && !saveData && motionEnabled();
+  let world: World | null = null;
+  let loading: Promise<World | null> | null = null;
+  const get3d = () => {
+    loading ??= import('../scripts/world')
+      .then(({ createWorld }) => (world = createWorld(el.querySelector<HTMLCanvasElement>('.w3d')!, root.dataset.art!)))
+      .catch((err) => {
+        console.warn('3D world unavailable, using the painted backdrop', err);
+        return null;
+      });
+    return loading;
+  };
+
+  async function place() {
+    const scene = root.dataset.scene ?? 'meadow';
+    const pose = parsePose(root.dataset.pose ?? '0.5,0.66,1.08,0.8,0,0');
+    set2d(pose);
+    if (!want3d()) {
+      el.dataset.mode = '2d';
+      root.classList.remove('world-pending');
+      return;
+    }
+    // If the paintings are slow to arrive, show the 2D one meanwhile.
+    const slow = setTimeout(() => root.classList.remove('world-pending'), 1500);
+    const w = await get3d();
+    if (!w) {
+      clearTimeout(slow);
+      root.classList.remove('world-pending');
+      return;
+    }
+    const { name, pose: p3 } = worldScene(scene);
+    w.refresh();
+    try {
+      await w.show(name, p3);
+    } catch (err) {
+      console.warn('3D world could not load its paintings', err);
+      el.dataset.mode = '2d';
+      return;
+    } finally {
+      clearTimeout(slow);
+      root.classList.remove('world-pending');
+    }
+    if (want3d()) el.dataset.mode = '3d';
+  }
+
+  window.planktosWorld = {
+    get mode() { return el.dataset.mode === '3d' ? '3d' : '2d'; },
+    get world() { return el.dataset.mode === '3d' ? world : null; },
+    set2d,
+  };
+
+  document.addEventListener('astro:page-load', place);
+  document.addEventListener('themechange', () => world?.refresh());
+  onMotionChange(() => place());
+</script>

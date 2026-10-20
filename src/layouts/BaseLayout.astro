@@ -1,8 +1,10 @@
 ---
 import '../styles/global.css';
-import EdenWorld from '../components/EdenWorld.astro';
+import { ClientRouter } from 'astro:transitions';
+import World from '../components/World.astro';
 import { BASE, SITE, href } from '../lib/config';
 import { getVault } from '../lib/vault/vault';
+import { sectionCss } from '../lib/site';
 import { poseAttr, scenePose } from '../lib/world';
 
 interface Props {
@@ -32,7 +34,7 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
 ---
 
 <!doctype html>
-<html lang="en" data-base={BASE} data-scene={scene} data-pose={pose}>
+<html lang="en" data-base={BASE} data-art={href('art/')} data-scene={scene} data-pose={pose}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -48,99 +50,88 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Noto+Serif+Thai:wght@500;600&display=swap"
     />
-    <!-- Opt in to cross-document view transitions as early as possible (see global.css). -->
-    <style is:inline>@view-transition { navigation: auto; }</style>
+    <ClientRouter />
     <!--
-      Render-blocking on purpose: it must set data-motion before first paint and
-      register pageswap/pagereveal before the first rendering opportunity.
+      Render-blocking on purpose: preferences must be on <html> before first paint.
+      ClientRouter replaces <html>'s attributes on every navigation, so the same
+      function runs again after each swap (before the new page is shown).
     -->
     <script is:inline>
       (() => {
         const root = document.documentElement;
-        // An explicit choice from the header toggle wins; otherwise follow the OS.
-        try {
-          const saved = localStorage.getItem('planktos:motion');
-          if (saved === 'on' || saved === 'off') root.dataset.motion = saved;
-          // Dark is the default; the header toggle can switch to the light theme.
-          if (localStorage.getItem('planktos:theme') === 'light') {
-            root.dataset.theme = 'light';
-            document.querySelector('meta[name="theme-color"]').content = '#f3ecdc';
-          }
-        } catch {}
         const motionOk = () =>
           root.dataset.motion === 'on' ||
           (root.dataset.motion !== 'off' && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+        const prefs = (doc) => {
+          const r = doc.documentElement;
+          try {
+            // An explicit choice from the header toggle wins; otherwise follow the OS.
+            const saved = localStorage.getItem('planktos:motion');
+            if (saved === 'on' || saved === 'off') r.dataset.motion = saved;
+            // Dusk is the default; the header toggle can switch to the light (fresco) theme.
+            if (localStorage.getItem('planktos:theme') === 'light') r.dataset.theme = 'light';
+            // The home page's opening sequence plays once per session, with motion on.
+            if (r.dataset.scene === 'home' && !sessionStorage.getItem('planktos:intro') && motionOk()) {
+              r.classList.add('home-intro');
+              sessionStorage.setItem('planktos:intro', '1');
+            }
+          } catch {}
+          const meta = doc.querySelector('meta[name="theme-color"]');
+          if (meta) meta.content = r.dataset.theme === 'light' ? '#f3ecdc' : '#12140f';
+        };
+        prefs(document);
+        // First load only: if the 3D world is likely, keep the 2D painting hidden until it decides
+        // (components/World.astro clears this), so the page doesn't show one and then the other.
+        try {
+          const saveData = navigator.connection && navigator.connection.saveData;
+          if (motionOk() && !saveData && document.createElement('canvas').getContext('webgl2')) root.classList.add('world-pending');
+        } catch {}
+
+        // ---- a note title morphs between a list item / card and the page heading ----
         const norm = (u) => {
           const x = new URL(u, location.href);
           return x.origin + x.pathname.replace(/\/?$/, '/');
         };
-
-        // ---- the painted world (lib/world.ts, components/EdenWorld.astro) ----
-        // Paint the first frame where the previous page left the camera, then
-        // EdenWorld glides to this page's pose. Poses are "x,y,z,veil,night,light".
-        const VARS = ['--wx', '--wy', '--wz', '--wv', '--wn', '--wl'];
-        const target = root.dataset.pose;
-        const apply = (p) => p.split(',').forEach((v, i) => root.style.setProperty(VARS[i], v));
-        let from = null, leave = target;
-        try { from = sessionStorage.getItem('planktos:pose'); } catch {}
-        if (from && motionOk()) {
-          apply(from);
-          // Arriving in the light of the Creation: a long descent from the sky.
-          if (+from.split(',')[5] > 0.5) root.dataset.descent = '';
-        } else apply(target);
-        window.planktosWorld = {
-          go: () => apply(target),
-          leaveFrom: (p) => { leave = p; },
-        };
-        const remember = () => { try { sessionStorage.setItem('planktos:pose', leave); } catch {} };
-        addEventListener('pagehide', remember);
-        addEventListener('pageswap', remember);
-
-        // The element that represents page `url` here: a list item / card title linking to it.
-        const titleLinkingTo = (url) => {
+        const titleLinkingTo = (doc, url) => {
           const target = norm(url);
-          for (const a of document.querySelectorAll('a[href]')) {
+          for (const a of doc.querySelectorAll('a[href]')) {
             if (norm(a.href) !== target) continue;
             const t = a.querySelector('[data-vt-title]');
             if (t) return t;
           }
           return null;
         };
-        const ownTitle = () => document.querySelector('h1[data-vt-title]');
-        const morph = (el, cleanup) => {
+        const named = [];
+        const morph = (el) => {
           if (!el) return;
           el.style.viewTransitionName = 'vt-title';
-          cleanup.push(() => (el.style.viewTransitionName = ''));
+          named.push(el);
         };
-
+        let from = location.href;
         // Old page: name the item that was clicked (opening) or our own heading (leaving).
-        addEventListener('pageswap', (e) => {
-          if (!e.viewTransition) return;
-          if (!motionOk()) return e.viewTransition.skipTransition();
-          const to = e.activation && e.activation.entry && e.activation.entry.url;
-          if (!to) return;
-          const cleanup = [];
-          morph(titleLinkingTo(to) || ownTitle(), cleanup);
-          e.viewTransition.ready.catch(() => {}); // aborted transitions just navigate normally
-          e.viewTransition.finished.finally(() => cleanup.forEach((f) => f()));
+        document.addEventListener('astro:before-preparation', (e) => {
+          from = location.href;
+          if (motionOk()) morph(titleLinkingTo(document, e.to) || document.querySelector('h1[data-vt-title]'));
         });
-
-        // New page: name the item for the page we came from (going back) or our own heading.
-        addEventListener('pagereveal', (e) => {
-          if (!e.viewTransition) return;
-          if (!motionOk()) return e.viewTransition.skipTransition();
-          const cleanup = [];
-          const from = self.navigation && navigation.activation && navigation.activation.from;
-          if (from && from.url) morph(titleLinkingTo(from.url) || ownTitle(), cleanup);
-          if (norm(location.href) === norm(root.dataset.base + 'universe')) {
-            root.dataset.vt = 'warp';
-            cleanup.push(() => delete root.dataset.vt);
-          }
-          e.viewTransition.ready.catch(() => {}); // aborted transitions just navigate normally
-          e.viewTransition.finished.finally(() => cleanup.forEach((f) => f()));
+        // New page: name the item for the page we came from (going back) or its own heading.
+        document.addEventListener('astro:before-swap', (e) => {
+          prefs(e.newDocument);
+          if (!motionOk()) return;
+          const doc = e.newDocument;
+          morph(titleLinkingTo(doc, from) || doc.querySelector('h1[data-vt-title]'));
+          // Entering the tree of knowledge: a short dive into the night garden.
+          if (norm(e.to) === norm(root.dataset.base + 'universe')) doc.documentElement.dataset.vt = 'warp';
+          const done = () => {
+            named.splice(0).forEach((el) => (el.style.viewTransitionName = ''));
+            delete root.dataset.vt;
+          };
+          if (e.viewTransition) e.viewTransition.finished.finally(done);
+          else setTimeout(done, 1000);
         });
       })();
     </script>
+    <!-- Subject colours, generated from the vault's folders (lib/garden.ts). -->
+    <style is:inline set:html={sectionCss(getVault())}></style>
     <slot name="head" />
   </head>
   <body>
@@ -171,7 +162,7 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
       </div>
     </header>
 
-    <EdenWorld />
+    <World />
 
     <main id="main">
       <slot />
@@ -193,35 +184,11 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
 
     <script>
       import { motionEnabled, onMotionChange, setMotion } from '../scripts/motion';
-
-      const motionBtn = document.querySelector<HTMLButtonElement>('.motion-toggle')!;
-      const syncMotionBtn = (on: boolean) => {
-        motionBtn.setAttribute('aria-pressed', String(on));
-        motionBtn.setAttribute('aria-label', on ? 'Animations on' : 'Animations off');
-        motionBtn.title = on ? 'Animations: on' : 'Animations: off';
-      };
-      syncMotionBtn(motionEnabled());
-      onMotionChange(syncMotionBtn);
-      motionBtn.addEventListener('click', () => setMotion(!motionEnabled()));
+      import { all, listen, onPage } from '../scripts/lifecycle';
 
       const root = document.documentElement;
-      const themeBtn = document.querySelector<HTMLButtonElement>('.theme-toggle')!;
-      const syncThemeBtn = () => {
-        const label = root.dataset.theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
-        themeBtn.setAttribute('aria-label', label);
-        themeBtn.title = label;
-      };
-      syncThemeBtn();
-      themeBtn.addEventListener('click', () => {
-        const light = root.dataset.theme !== 'light';
-        if (light) root.dataset.theme = 'light';
-        else delete root.dataset.theme;
-        document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')!.content = light ? '#f3ecdc' : '#12140f';
-        try { localStorage.setItem('planktos:theme', light ? 'light' : 'dark'); } catch {}
-        syncThemeBtn();
-        // Canvas graphs and diagrams re-read their colours.
-        document.dispatchEvent(new Event('themechange'));
-      });
+
+      // ---- document-wide behaviour (registered once; survives navigation) ----
 
       // Buttons: a soft ripple from where they were pressed.
       document.addEventListener('pointerdown', (e) => {
@@ -248,26 +215,6 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
         card.style.setProperty('--my', `${e.clientY - r.top}px`);
       });
 
-      // Back to top: shown once the reader is well down a long page.
-      const toTop = document.querySelector<HTMLButtonElement>('.to-top')!;
-      let toTopRaf = 0;
-      const syncToTop = () => {
-        toTopRaf = 0;
-        toTop.classList.toggle('shown', scrollY > Math.max(600, innerHeight));
-      };
-      addEventListener('scroll', () => { if (!toTopRaf) toTopRaf = requestAnimationFrame(syncToTop); }, { passive: true });
-      syncToTop();
-      toTop.addEventListener('click', () => {
-        scrollTo({ top: 0, behavior: motionEnabled() ? 'smooth' : 'auto' });
-        document.querySelector<HTMLElement>('.brand')?.focus({ preventScroll: true });
-      });
-
-      const header = document.querySelector<HTMLElement>('.site-header')!;
-      const toggle = header.querySelector<HTMLButtonElement>('.menu-toggle')!;
-      toggle.addEventListener('click', () => {
-        const open = header.toggleAttribute('data-open');
-        toggle.setAttribute('aria-expanded', String(open));
-      });
       // "/" focuses search, like most documentation sites.
       document.addEventListener('keydown', (e) => {
         const t = e.target as HTMLElement;
@@ -276,6 +223,60 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
         const input = document.querySelector<HTMLInputElement>('#search-page-input') ?? document.querySelector<HTMLInputElement>('#q');
         if (input && getComputedStyle(input).display !== 'none' && input.offsetParent) input.focus();
         else location.href = document.querySelector<HTMLFormElement>('.header-search')!.action;
+      });
+
+      // ---- the header and back-to-top button (new elements on every page) ----
+      onPage(() => {
+        const motionBtn = document.querySelector<HTMLButtonElement>('.motion-toggle')!;
+        const syncMotionBtn = (on: boolean) => {
+          motionBtn.setAttribute('aria-pressed', String(on));
+          motionBtn.setAttribute('aria-label', on ? 'Animations on' : 'Animations off');
+          motionBtn.title = on ? 'Animations: on' : 'Animations: off';
+        };
+        syncMotionBtn(motionEnabled());
+        const offMotion = onMotionChange(syncMotionBtn);
+        motionBtn.addEventListener('click', () => setMotion(!motionEnabled()));
+
+        const themeBtn = document.querySelector<HTMLButtonElement>('.theme-toggle')!;
+        const syncThemeBtn = () => {
+          const label = root.dataset.theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+          themeBtn.setAttribute('aria-label', label);
+          themeBtn.title = label;
+        };
+        syncThemeBtn();
+        themeBtn.addEventListener('click', () => {
+          const light = root.dataset.theme !== 'light';
+          if (light) root.dataset.theme = 'light';
+          else delete root.dataset.theme;
+          document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')!.content = light ? '#f3ecdc' : '#12140f';
+          try { localStorage.setItem('planktos:theme', light ? 'light' : 'dark'); } catch {}
+          syncThemeBtn();
+          // Canvas graphs, diagrams and the world re-read their colours.
+          document.dispatchEvent(new Event('themechange'));
+        });
+
+        // Back to top: shown once the reader is well down a long page.
+        const toTop = document.querySelector<HTMLButtonElement>('.to-top')!;
+        let toTopRaf = 0;
+        const syncToTop = () => {
+          toTopRaf = 0;
+          toTop.classList.toggle('shown', scrollY > Math.max(600, innerHeight));
+        };
+        const offScroll = listen(window, 'scroll', () => { if (!toTopRaf) toTopRaf = requestAnimationFrame(syncToTop); }, { passive: true });
+        syncToTop();
+        toTop.addEventListener('click', () => {
+          scrollTo({ top: 0, behavior: motionEnabled() ? 'smooth' : 'auto' });
+          document.querySelector<HTMLElement>('.brand')?.focus({ preventScroll: true });
+        });
+
+        const header = document.querySelector<HTMLElement>('.site-header')!;
+        const toggle = header.querySelector<HTMLButtonElement>('.menu-toggle')!;
+        toggle.addEventListener('click', () => {
+          const open = header.toggleAttribute('data-open');
+          toggle.setAttribute('aria-expanded', String(open));
+        });
+
+        return all(offMotion, offScroll, () => cancelAnimationFrame(toTopRaf));
       });
     </script>
   </body>

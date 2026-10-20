@@ -4,7 +4,7 @@ import NoteList from '../../components/NoteList.astro';
 import ShelfStage from '../../components/Shelf/ShelfStage.astro';
 import { colorVar, shelfBook } from '../../components/Shelf/data';
 import type { ShelfData } from '../../scripts/shelf';
-import { recent, sections, type SectionInfo } from '../../lib/site';
+import { notesLabel, recent, sections, type SectionInfo } from '../../lib/site';
 import { getVault } from '../../lib/vault/vault';
 
 export function getStaticPaths() {
@@ -40,10 +40,10 @@ const courses = shelf.boards.map((b) => {
 });
 ---
 
-<BaseLayout title={sec.label} nav="library" scene={`shelf:${sec.slug}`}>
+<BaseLayout title={sec.label} nav="library" scene={`shelf:${sec.spot.name}`}>
   <ShelfStage data={shelf} label={`${sec.label} bookshelf`}>
     <header class="page-head" slot="head">
-      <p class="eyebrow"><span class="section-dot" style={`--dot:${sec.color}`}></span>Library · {sec.notes.length} notes</p>
+      <p class="eyebrow"><span class="section-dot" style={`--dot:${sec.color}`}></span>Library · {notesLabel(sec.notes.length)}</p>
       <h1 data-vt-title>{sec.label}</h1>
       <p>{sec.blurb}</p>
     </header>
@@ -90,42 +90,47 @@ const courses = shelf.boards.map((b) => {
 </BaseLayout>
 
 <script>
-  // Filter the list by course and/or note type; the choice is kept in ?course= / ?type= so it can be shared.
-  const typeChips = [...document.querySelectorAll<HTMLButtonElement>('.type-chip[data-type]')];
-  const courseChips = [...document.querySelectorAll<HTMLButtonElement>('.type-chip[data-course]')];
-  const groups = [...document.querySelectorAll<HTMLElement>('.by-type .side-group')];
-  const state = { type: '', course: '' };
-  const apply = () => {
-    if (state.type && !typeChips.some((c) => c.dataset.type === state.type)) state.type = '';
-    if (state.course && !courseChips.some((c) => c.dataset.course === state.course)) state.course = '';
-    for (const c of typeChips) c.setAttribute('aria-pressed', String(c.dataset.type === state.type));
-    for (const c of courseChips) c.setAttribute('aria-pressed', String(c.dataset.course === state.course));
-    for (const g of groups) {
-      const inCourse = !state.course || g.dataset.course === state.course;
-      for (const li of g.querySelectorAll<HTMLElement>('.note-list li')) li.hidden = !inCourse || (!!state.type && li.dataset.type !== state.type);
-      // Shelf groups with nothing left to show fold away.
-      g.hidden = ![...g.querySelectorAll('li')].some((li) => !li.hidden);
-    }
-    // The 3D shelf dims the volumes that don't match instead of hiding them.
-    const stage = document.querySelector<HTMLElement>('.shelf-stage');
-    if (stage) {
-      stage.dataset.filter = state.type;
-      stage.dataset.course = state.course;
-      stage.dispatchEvent(new CustomEvent('shelf-filter', { detail: { ...state } }));
-    }
-    const url = new URL(location.href);
-    for (const k of ['type', 'course'] as const) {
-      if (state[k]) url.searchParams.set(k, state[k]);
-      else url.searchParams.delete(k);
-    }
-    history.replaceState(null, '', url);
-  };
-  for (const c of typeChips) c.addEventListener('click', () => ((state.type = c.dataset.type!), apply()));
-  for (const c of courseChips) c.addEventListener('click', () => ((state.course = c.dataset.course!), apply()));
-  const params = new URL(location.href).searchParams;
-  state.type = params.get('type') ?? '';
-  state.course = params.get('course') ?? '';
-  apply();
+  import { onPage } from '../../scripts/lifecycle';
+
+  onPage(() => {
+    if (!document.querySelector('.by-type')) return;
+    // Filter the list by course and/or note type; the choice is kept in ?course= / ?type= so it can be shared.
+    const typeChips = [...document.querySelectorAll<HTMLButtonElement>('.type-chip[data-type]')];
+    const courseChips = [...document.querySelectorAll<HTMLButtonElement>('.type-chip[data-course]')];
+    const groups = [...document.querySelectorAll<HTMLElement>('.by-type .side-group')];
+    const state = { type: '', course: '' };
+    const apply = () => {
+      if (state.type && !typeChips.some((c) => c.dataset.type === state.type)) state.type = '';
+      if (state.course && !courseChips.some((c) => c.dataset.course === state.course)) state.course = '';
+      for (const c of typeChips) c.setAttribute('aria-pressed', String(c.dataset.type === state.type));
+      for (const c of courseChips) c.setAttribute('aria-pressed', String(c.dataset.course === state.course));
+      for (const g of groups) {
+        const inCourse = !state.course || g.dataset.course === state.course;
+        for (const li of g.querySelectorAll<HTMLElement>('.note-list li')) li.hidden = !inCourse || (!!state.type && li.dataset.type !== state.type);
+        // Shelf groups with nothing left to show fold away.
+        g.hidden = ![...g.querySelectorAll('li')].some((li) => !li.hidden);
+      }
+      // The 3D shelf dims the volumes that don't match instead of hiding them.
+      const stage = document.querySelector<HTMLElement>('.shelf-stage');
+      if (stage) {
+        stage.dataset.filter = state.type;
+        stage.dataset.course = state.course;
+        stage.dispatchEvent(new CustomEvent('shelf-filter', { detail: { ...state } }));
+      }
+      const url = new URL(location.href);
+      for (const k of ['type', 'course'] as const) {
+        if (state[k]) url.searchParams.set(k, state[k]);
+        else url.searchParams.delete(k);
+      }
+      history.replaceState(null, '', url);
+    };
+    for (const c of typeChips) c.addEventListener('click', () => ((state.type = c.dataset.type!), apply()));
+    for (const c of courseChips) c.addEventListener('click', () => ((state.course = c.dataset.course!), apply()));
+    const params = new URL(location.href).searchParams;
+    state.type = params.get('type') ?? '';
+    state.course = params.get('course') ?? '';
+    apply();
+  });
 </script>
 
 <style>

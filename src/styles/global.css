@@ -26,12 +26,8 @@ html[data-theme='light'] .space {
   --mark: rgb(214 178 94 / 0.22);
   --danger: #db8a7a;
 
-  /* section pigments (also the fruit on the tree of knowledge) */
-  --sec-mathematics: #86a5c8;        /* lapis */
-  --sec-physics: #aa9bcc;            /* iris */
-  --sec-computer-science: #93b67e;   /* leaf */
-  --sec-research: #d5a660;           /* ochre */
-  --sec-ideas: #d27f72;              /* pomegranate */
+  /* Subject colours (--sec-<subject>) are generated from the vault (lib/garden.ts, BaseLayout);
+     this one is for anything outside a subject. */
   --sec-other: #9c9888;
 
   /* callout families */
@@ -69,11 +65,6 @@ html[data-theme='light'] {
   --mark: rgb(138 100 32 / 0.16);
   --danger: #a8443a;
 
-  --sec-mathematics: #3f6690;
-  --sec-physics: #66579a;
-  --sec-computer-science: #47703a;
-  --sec-research: #8f6424;
-  --sec-ideas: #a1473e;
   --sec-other: #6f6a5c;
 
   --c-info: #3f6690;
@@ -233,7 +224,7 @@ a.card:hover { text-decoration: none; border-color: var(--border-strong); transf
 
 .status { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-label); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); border: 1px solid var(--border-strong); border-radius: 999px; padding: 2px 10px; }
 .status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); }
-.status[data-status='active']::before { background: var(--sec-computer-science); }
+.status[data-status='active']::before { background: var(--c-success); }
 .status[data-status='studying']::before { background: var(--accent); }
 .status[data-status='complete']::before { background: var(--accent-2); }
 .status[data-status='seed']::before, .status[data-status='draft']::before { background: var(--c-warning); }
@@ -391,7 +382,8 @@ html[data-theme='light'] .prose .shiki, html[data-theme='light'] .prose .shiki s
 .prose a.wikilink:hover { text-decoration: none; background-size: 100% 1px, 100% 1px; }
 .prose a.tag { font-family: var(--font-label); font-size: 0.85em; background: var(--accent-soft); padding: 1px 8px; border-radius: 999px; }
 .prose a.citation { color: var(--accent-2); }
-.prose .broken-link { color: var(--danger); border-bottom: 1px dashed var(--danger); cursor: help; }
+/* A link to a note that was removed (or not written yet): quiet, not alarming. */
+.prose .broken-link { color: var(--text-faint); border-bottom: 1px dotted var(--border-strong); cursor: help; }
 
 /* math */
 .prose mjx-container { color: var(--text); }

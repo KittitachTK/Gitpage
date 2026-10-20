@@ -2,36 +2,71 @@
  * View-model helpers shared by pages: everything here is derived from the
  * vault (folders, links, frontmatter) — nothing is hand-maintained.
  */
-import { SECTIONS, href } from './config';
+import { href } from './config';
+import { sectionVar, styleSections, type Spot } from './garden';
 import { slugify } from './vault/parse';
 import type { Note } from './vault/types';
-import type { Vault } from './vault/vault';
+import { getVault, type Vault } from './vault/vault';
 
 export interface SectionInfo {
   folder: string;
   label: string;
   blurb: string;
   slug: string;
+  /** Notes on this subject's shelves (its folder note, if any, describes the subject and is left out). */
   notes: Note[];
-  /** CSS custom property holding the sector colour. */
+  /** CSS colour of the subject, e.g. `var(--sec-mathematics)`. */
   color: string;
+  /** [dusk, fresco] colours. */
+  colors: [string, string];
+  /** Where its shelves stand in the garden. */
+  spot: Spot;
+  /** The `type: section` folder note describing the subject, if there is one. */
+  index?: Note;
 }
 
+/** "1 note", "2 notes". */
+export const notesLabel = (n: number) => `${n} ${n === 1 ? 'note' : 'notes'}`;
+
+/** A subject's own description: `Chemistry/Chemistry.md` with `type: section`. */
+export const isSectionNote = (n: Note) => n.folders.length === 1 && n.name === n.section && n.type === 'section';
+
+const cache = new WeakMap<Vault, SectionInfo[]>();
+
+/** The vault's subjects: one per top-level folder that holds notes, in display order. */
 export function sections(vault: Vault): SectionInfo[] {
-  const known = SECTIONS.map((s) => s.folder);
-  const list = SECTIONS.map((s) => ({ ...s, notes: vault.notes.filter((n) => n.section === s.folder) }));
-  const other = vault.notes.filter((n) => !known.includes(n.section) && n.folders.length > 0);
-  if (other.length) list.push({ folder: 'Other', label: 'Other', blurb: 'Everything else.', notes: other });
-  return list.map((s) => ({ ...s, slug: slugify(s.folder), color: sectionColor(s.folder) }));
+  let list = cache.get(vault);
+  if (list) return list;
+  const folders = [...new Set(vault.notes.filter((n) => n.folders.length > 0).map((n) => n.section))];
+  const index = new Map(vault.notes.filter(isSectionNote).map((n) => [n.section, n]));
+  list = styleSections(folders.map((folder) => ({ folder, meta: index.get(folder)?.frontmatter ?? {} }))).map((st) => {
+    const slug = slugify(st.folder);
+    return {
+      ...st,
+      slug,
+      color: `var(${sectionVar(slug)})`,
+      notes: vault.notes.filter((n) => n.section === st.folder && n.folders.length > 0 && !isSectionNote(n)),
+      index: index.get(st.folder),
+    };
+  });
+  cache.set(vault, list);
+  return list;
 }
 
+/** CSS colour for a subject folder; unknown folders fall back to the neutral pigment. */
 export function sectionColor(section: string) {
-  const known = SECTIONS.some((s) => s.folder === section);
-  return `var(--sec-${known ? slugify(section) : 'other'})`;
+  return `var(${sectionVar(slugify(section))}, var(--sec-other))`;
 }
 
 export function sectionLabel(section: string) {
-  return SECTIONS.find((s) => s.folder === section)?.label ?? section;
+  return sections(getVault()).find((s) => s.folder === section)?.label ?? section;
+}
+
+/** Per-subject colour variables for both themes, generated from the vault. */
+export function sectionCss(vault: Vault) {
+  const secs = sections(vault);
+  const decl = (k: 0 | 1) => secs.map((s) => `${sectionVar(s.slug)}:${s.colors[k]};`).join('');
+  return `:root,html[data-theme='light'] .space{${decl(0)}}html[data-theme='light']{${decl(1)}}`;
 }
 
 export interface TreeNode {

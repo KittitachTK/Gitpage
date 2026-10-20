@@ -6,6 +6,8 @@
 ---
 
 <script>
+  import { onPage } from '../scripts/lifecycle';
+
   const DARK = {
     darkMode: true,
     background: '#10141c',
@@ -47,6 +49,10 @@
     });
     await mermaid.run({ nodes: blocks });
   }
-  renderMermaid();
-  document.addEventListener('themechange', renderMermaid);
+  onPage(() => {
+    if (!document.querySelector('pre.mermaid')) return;
+    renderMermaid();
+    document.addEventListener('themechange', renderMermaid);
+    return () => document.removeEventListener('themechange', renderMermaid);
+  });
 </script>

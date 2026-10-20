@@ -1,9 +1,11 @@
-/** Set up by BaseLayout's head script (see lib/world.ts and components/EdenWorld.astro). */
+/** Set up by components/World.astro: the painted world behind every page. */
 interface PlanktosWorld {
-  /** Glide the painted world to this page's pose. */
-  go(): void;
-  /** Remember the pose (a `poseAttr` string) the next page should start from. */
-  leaveFrom(pose: string): void;
+  /** '3d' when the WebGL world is showing, '2d' for the CSS painting. */
+  readonly mode: '2d' | '3d';
+  /** The 3D world while it is showing (scripts/world.ts). */
+  readonly world: import('./scripts/world').World | null;
+  /** Pose the 2D painting (lib/world.ts). */
+  set2d(pose: import('./lib/world').Pose, instant?: boolean): void;
 }
 
 interface Window {

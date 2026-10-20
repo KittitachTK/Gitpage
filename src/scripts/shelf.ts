@@ -9,6 +9,7 @@
  * page simply falls back to the list view.
  */
 import * as THREE from 'three';
+import { navigate } from 'astro:transitions/client';
 import { motionEnabled, onMotionChange } from './motion';
 
 export interface ShelfBook {
@@ -830,7 +831,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
       glow.intensity = 3.2 * k;
     }, 760);
     tween(1, easeOut, () => revealTitle(b, book), 1060);
-    tween(1, easeOut, () => {}, 1260, () => location.assign(url));
+    tween(1, easeOut, () => {}, 1260, () => navigate(url));
   }
 
   // Front cover for the volume being opened: cloth, a foil frame, the title and its shelf.
@@ -930,7 +931,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
       camLookCur.lerpVectors(look0, centre, k);
     }, 0, () => {
       try { sessionStorage.setItem('planktos:arrive', 'dock'); } catch {}
-      location.assign(a.href);
+      navigate(a.href);
     });
   }
 
@@ -957,7 +958,8 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     kick();
   }
   // Coming back via the back button restores the page from bfcache: put the book back.
-  addEventListener('pageshow', (e) => { if (e.persisted) resetSelection(); });
+  const onShow = (e: PageTransitionEvent) => { if (e.persisted) resetSelection(); };
+  addEventListener('pageshow', onShow);
 
   // ---- projection helpers ----
   const v = new THREE.Vector3();
@@ -1131,8 +1133,9 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     kick();
   });
   io.observe(stage);
-  document.addEventListener('visibilitychange', () => { last = 0; kick(); });
-  onMotionChange(() => { last = 0; kick(); });
+  const onVisibility = () => { last = 0; kick(); };
+  document.addEventListener('visibilitychange', onVisibility);
+  const offMotion = onMotionChange(() => { last = 0; kick(); });
 
   let lastKey = '';
   const ro = new ResizeObserver(() => {
@@ -1192,13 +1195,19 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     });
   }
 
-  addEventListener('pagehide', (e) => {
-    if (e.persisted) return;
+  // Called when the page is swapped out (ClientRouter): free the GPU and every listener.
+  return () => {
+    cancelAnimationFrame(raf);
+    raf = 0;
     io.disconnect();
     ro.disconnect();
+    document.removeEventListener('visibilitychange', onVisibility);
+    removeEventListener('pageshow', onShow);
+    offMotion();
     clearSegments();
     atlas.dispose();
     disposables.forEach((d) => d.dispose());
     renderer.dispose();
-  });
+    renderer.forceContextLoss();
+  };
 }

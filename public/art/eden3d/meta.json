@@ -1,0 +1,33 @@
+{
+ "width": 2400,
+ "height": 1766,
+ "near": 3,
+ "far": 24,
+ "layers": [
+  {
+   "file": "layer0.webp",
+   "depth": "layer0-depth.png",
+   "coverage": 1.0
+  },
+  {
+   "file": "layer1.webp",
+   "depth": "layer1-depth.png",
+   "coverage": 0.8
+  },
+  {
+   "file": "layer2.webp",
+   "depth": "layer2-depth.png",
+   "coverage": 0.614
+  },
+  {
+   "file": "layer3.webp",
+   "depth": "layer3-depth.png",
+   "coverage": 0.325
+  },
+  {
+   "file": "layer4.webp",
+   "depth": "layer4-depth.png",
+   "coverage": 0.143
+  }
+ ]
+}

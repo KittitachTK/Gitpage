@@ -85,7 +85,9 @@ export function validateVault(vault: Vault): Issue[] {
       const target = vault.resolveNote(l.target, n);
       if (!target) {
         issues.push({
-          level: 'error', rule: 'broken-wikilink', file: rel(n), line: l.line,
+          // A warning, not an error: removing a summary must never block publishing the rest.
+          // The link renders as muted text until it is fixed or the note returns.
+          level: 'warning', rule: 'broken-wikilink', file: rel(n), line: l.line,
           message: `Broken wikilink ${l.raw}`,
           // Linking by title instead of file name is the most common mistake.
           suggestions: [

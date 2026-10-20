@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import matter from 'gray-matter';
-import { ASSET_PREFIX, BIB_FILE, IGNORE, SECTIONS, VAULT_DIR, href } from '../config';
+import { ASSET_PREFIX, BIB_FILE, IGNORE, VAULT_DIR, href } from '../config';
 import { parseBibtex } from './bib';
 import {
   extractHeadings, extractInlineTags, extractWikiLinks, makeExcerpt, maskNonProse, slugify, tagSlug, toPlainText,
@@ -242,13 +242,14 @@ export function loadVault(root = VAULT_DIR): Vault {
     }
   }
 
-  const sectionOrder = SECTIONS.map((s) => s.folder);
   const graph: Graph = {
     nodes: notes.map((n) => ({
       id: n.id,
       title: n.title,
       slug: n.slug,
-      section: sectionOrder.includes(n.section) ? n.section : 'Other',
+      section: n.folders.length ? n.section : 'Other',
+      // Each subject's colour is a CSS custom property generated from the vault (lib/garden.ts).
+      color: n.folders.length ? `--sec-${slugify(n.section)}` : '--sec-other',
       group: n.folders.slice(0, 2).join('/') || n.section,
       degree: (out.get(n)?.length ?? 0) + (back.get(n)?.size ?? 0),
       tags: n.tags,

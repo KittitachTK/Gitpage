@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import NoteList from '../components/NoteList.astro';
 import { SITE, href } from '../lib/config';
-import { recent, sections } from '../lib/site';
+import { notesLabel, recent, sections } from '../lib/site';
 import { getVault } from '../lib/vault/vault';
 import { HEAVEN_ATTR } from '../lib/world';
 
@@ -19,28 +19,13 @@ const art = (f: string) => href(`art/${f}`);
 
 <BaseLayout nav="home">
   <!--
-    The Creation of Adam (Michelangelo, c. 1512), split along the gap between
-    the fingers into two layers (public/art/creation-*.webp) so Adam and God can
-    drift towards each other. Touching the spark between their fingers floods
-    the fresco with light and descends into the garden library.
+    The Creation of Adam (Michelangelo, c. 1512). With the 3D world (scripts/world.ts)
+    the hero is a window onto the fresco as a relief; otherwise it shows the fresco split
+    along the gap between the fingers into two layers (public/art/creation-*.webp) so Adam
+    and God can drift towards each other. Either way, touching the spark between their
+    fingers floods it with light and descends into the garden library.
   -->
-  <section class="hero" data-heaven={HEAVEN_ATTR} data-library={href('library')}>
-    <!--
-      Decide before the hero paints whether to play the opening sequence: once per
-      session, and only with motion on. Inline so there is no flash of final state.
-    -->
-    <script is:inline>
-      (function () {
-        var r = document.documentElement, seen = null;
-        var ok = r.dataset.motion === 'on' ||
-          (r.dataset.motion !== 'off' && !matchMedia('(prefers-reduced-motion: reduce)').matches);
-        try { seen = sessionStorage.getItem('planktos:intro'); } catch (e) {}
-        if (ok && !seen) {
-          r.classList.add('home-intro');
-          try { sessionStorage.setItem('planktos:intro', '1'); } catch (e) {}
-        }
-      })();
-    </script>
+  <section class="hero" data-heaven={HEAVEN_ATTR}>
 
     <div class="fresco">
       <img class="f-base" src={art('creation-base.webp')} alt="" aria-hidden="true" />
@@ -105,7 +90,7 @@ const art = (f: string) => href(`art/${f}`);
           <a class="card" href={href(`library/${s.slug}`)} style={`--glow:${s.color}`}>
             <span class="count">
               <span class="section-dot" style={`--dot:${s.color}`} />
-              {s.notes.length} notes
+              {notesLabel(s.notes.length)}
             </span>
             <h3 data-vt-title>{s.label}</h3>
             <p>{s.blurb}</p>
@@ -188,12 +173,12 @@ const art = (f: string) => href(`art/${f}`);
   .spark::before { transition: inset var(--dur-base) var(--ease-out); }
   .spark:focus-visible { outline: 1px solid rgb(138 100 32 / 0.7); outline-offset: 2px; }
   .spark-label {
-    position: absolute; top: 100%; left: 50%; translate: -50% 0; margin-top: 30px; white-space: nowrap;
+    position: absolute; top: 100%; left: 50%; translate: calc(-50% + var(--lx, 0px)) 0; margin-top: 30px; white-space: nowrap;
     font-family: var(--font-label); font-size: 0.7rem; letter-spacing: 0.32em; text-transform: uppercase; color: var(--ink);
     text-shadow: 0 0 10px rgb(var(--plaster)), 0 0 4px rgb(var(--plaster));
     transition: opacity var(--dur-base);
   }
-  .spark-label::before { content: ''; position: absolute; left: 50%; bottom: calc(100% + 6px); width: 1px; height: 18px; background: linear-gradient(transparent, rgb(58 42 24 / 0.55)); }
+  .spark-label::before { content: ''; position: absolute; left: calc(50% - var(--lx, 0px)); bottom: calc(100% + 6px); width: 1px; height: 18px; background: linear-gradient(transparent, rgb(58 42 24 / 0.55)); }
   .spark:hover .spark-label { color: #8a6420; }
   @keyframes spark-pulse {
     0%, 100% { opacity: 0.55; transform: scale(0.85); }
@@ -275,6 +260,29 @@ const art = (f: string) => href(`art/${f}`);
   .hero.is-entering .f-light { opacity: 1; transition: opacity 900ms ease-in 450ms; }
   .hero.is-entering .hero-inner, .hero.is-entering .f-dust { opacity: 0; transition: opacity 400ms var(--ease-out); }
 
+  /* While the world decides between 3D and 2D (first load), only the plaster shows. */
+  :global(html.world-pending) .fresco > img,
+  :global(html.world-pending) .f-figure,
+  :global(html.world-pending) .f-dust { visibility: hidden; }
+
+  /* ---- 3D: the world draws the fresco; the hero is a window onto it ---------------------
+     (the 2D layers stay in the markup as the fallback) */
+  :global(html:has(.world[data-mode='3d'])) .hero { background: transparent; }
+  :global(html:has(.world[data-mode='3d'])) .fresco { inset: 0; width: auto; height: auto; animation: none; }
+  :global(html:has(.world[data-mode='3d'])) .fresco > img,
+  :global(html:has(.world[data-mode='3d'])) .f-figure,
+  :global(html:has(.world[data-mode='3d'])) .f-dust,
+  :global(html:has(.world[data-mode='3d'])) .f-light { display: none; }
+  :global(html:has(.world[data-mode='3d'])) .f-wash {
+    background:
+      linear-gradient(180deg, rgb(var(--plaster) / 0.75), rgb(var(--plaster) / 0.35) 17%, rgb(var(--plaster) / 0) 34%),
+      linear-gradient(0deg, color-mix(in srgb, var(--bg) 80%, transparent), transparent 26%);
+  }
+  /* The spark and its flare follow the gap between the fingers in the 3D view (set in px by the script). */
+  .spark[style*='--sx'], .f-flare[style*='--sx'] { left: var(--sx); top: var(--sy); }
+  .hero.is-touching3d .spark { opacity: 0; transition: opacity 200ms; }
+  .hero.is-touching3d .hero-inner { opacity: 0; transition: opacity 500ms var(--ease-out) 300ms; }
+
   /* ---- tree of knowledge preview ------------------------------------------------- */
   .mini-universe {
     position: relative; display: block; margin-top: 16px; height: 340px;
@@ -295,80 +303,133 @@ const art = (f: string) => href(`art/${f}`);
   @media (max-width: 640px) { .mini-universe { height: 260px; } }
 
   /* ---- a bud that slowly opens and closes ----------------------------------------- */
-  .bud { display: inline-block; width: 7px; height: 7px; border-radius: 50% 0; background: var(--sec-computer-science); margin-right: 10px; vertical-align: middle; rotate: 45deg; animation: bud 3.2s ease-in-out infinite; }
+  .bud { display: inline-block; width: 7px; height: 7px; border-radius: 50% 0; background: var(--c-success); margin-right: 10px; vertical-align: middle; rotate: 45deg; animation: bud 3.2s ease-in-out infinite; }
   @keyframes bud { 0%, 100% { opacity: 0.45; scale: 0.85; } 50% { opacity: 1; scale: 1.1; } }
 </style>
 
 <script>
+  import { navigate } from 'astro:transitions/client';
   import { countUp, motionEnabled, reveal } from '../scripts/motion';
   import { mountGraph } from '../scripts/graph';
   import { mountPollen } from '../scripts/pollen';
+  import { all, listen, onPage } from '../scripts/lifecycle';
+  import { parsePose } from '../lib/world';
 
-  const hero = document.querySelector<HTMLElement>('.hero')!;
-  const spark = hero.querySelector<HTMLElement>('.spark')!;
+  onPage(() => {
+    const hero = document.querySelector<HTMLElement>('.hero');
+    if (!hero) return;
+    const spark = hero.querySelector<HTMLElement>('.spark')!;
+    const flare = hero.querySelector<HTMLElement>('.f-flare')!;
+    const label = hero.querySelector<HTMLElement>('.spark-label')!;
+    const root = document.documentElement;
+    const intro = root.classList.contains('home-intro');
+    const world3d = () => window.planktosWorld?.world ?? null;
+    const cleanups: (() => void)[] = [];
 
-  // Golden dust hanging in the light between the two hands.
-  const focus = { x: 0.4, y: 0.45, spread: 0.12 };
-  const placeFocus = () => {
-    const h = hero.getBoundingClientRect(), s = spark.getBoundingClientRect();
-    focus.x = (s.left + s.width / 2 - h.left) / h.width;
-    focus.y = (s.top + s.height / 2 - h.top) / h.height;
-    focus.spread = Math.min(0.22, 260 / h.width);
-  };
-  placeFocus();
-  new ResizeObserver(placeFocus).observe(hero);
-  mountPollen(hero.querySelector<HTMLCanvasElement>('.f-dust')!, { density: 2.4, color: '255,236,180', focus });
+    // ---- 2D: golden dust hanging in the light between the two hands ----
+    const focus = { x: 0.4, y: 0.45, spread: 0.12 };
+    const placeFocus = () => {
+      const h = hero.getBoundingClientRect(), r = spark.getBoundingClientRect();
+      focus.x = (r.left + r.width / 2 - h.left) / h.width;
+      focus.y = (r.top + r.height / 2 - h.top) / h.height;
+      focus.spread = Math.min(0.22, 260 / h.width);
+    };
+    placeFocus();
+    const ro = new ResizeObserver(placeFocus);
+    ro.observe(hero);
+    const dust = mountPollen(hero.querySelector<HTMLCanvasElement>('.f-dust')!, { density: 2.4, color: '255,236,180', focus });
+    cleanups.push(() => { ro.disconnect(); dust.destroy(); });
 
-  // Touch: the fingers meet, light floods the fresco, and we descend into the garden.
-  let entering = false;
-  hero.addEventListener('click', (e) => {
-    const a = (e.target as Element).closest<HTMLAnchorElement>('a[data-touch]');
-    if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    if (!motionEnabled()) return; // a plain link
-    e.preventDefault();
-    if (entering) return;
-    entering = true;
-    hero.classList.add('is-touching');
-    setTimeout(() => hero.classList.add('is-entering'), 560);
-    setTimeout(() => {
-      window.planktosWorld?.leaveFrom(hero.dataset.heaven!);
+    // ---- 3D: the spark follows the gap between the fingers; the fresco fades as you scroll ----
+    let raf = 0;
+    let introPlayed = false;
+    const track = () => {
+      raf = requestAnimationFrame(track);
+      const w = world3d();
+      const g = w?.gapScreen();
+      if (!w || !g) {
+        spark.style.removeProperty('--sx');
+        flare.style.removeProperty('--sx');
+        return;
+      }
+      if (intro && !introPlayed) { introPlayed = true; w.intro(); }
+      const h = hero.getBoundingClientRect();
+      // Keep the label on screen when the gap sits near an edge (phones).
+      const half = label.offsetWidth / 2 + 12;
+      label.style.setProperty('--lx', `${Math.max(0, half - (g.x - h.left)) - Math.max(0, g.x - h.left + half - h.width)}px`);
+      for (const el of [spark, flare]) {
+        el.style.setProperty('--sx', `${g.x - h.left}px`);
+        el.style.setProperty('--sy', `${g.y - h.top}px`);
+      }
+      w.setExtraVeil(Math.min(1, Math.max(0, (scrollY - h.height * 0.2) / (h.height * 0.6))) * 0.9);
+    };
+    raf = requestAnimationFrame(track);
+    cleanups.push(() => { cancelAnimationFrame(raf); world3d()?.setExtraVeil(0); });
+
+    // ---- touch: the fingers meet, light floods in, and we descend into the garden ----
+    let entering = false;
+    const go = (url: string) => {
       try { sessionStorage.setItem('planktos:arrive', 'warp'); } catch {}
-      location.assign(a.href);
-    }, 560 + 1500);
+      navigate(url);
+    };
+    cleanups.push(listen(hero, 'click', (e) => {
+      const ev = e as MouseEvent;
+      const a = (ev.target as Element).closest<HTMLAnchorElement>('a[data-touch]');
+      if (!a || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+      if (!motionEnabled()) return; // a plain link
+      ev.preventDefault();
+      if (entering) return;
+      entering = true;
+      const w = world3d();
+      if (w) {
+        hero.classList.add('is-touching3d');
+        w.touch(() => go(a.href));
+        return;
+      }
+      hero.classList.add('is-touching');
+      setTimeout(() => hero.classList.add('is-entering'), 560);
+      setTimeout(() => {
+        // The 2D painting waits in heaven's light; the library's page load starts the descent.
+        window.planktosWorld?.set2d(parsePose(hero.dataset.heaven!), true);
+        go(a.href);
+      }, 560 + 1500);
+    }));
+
+    // Stats count up as the opening sequence reaches them.
+    if (intro) document.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => countUp(el, Number(el.dataset.count), 1400, 3700));
+
+    cleanups.push(
+      reveal(document.querySelectorAll<HTMLElement>('.home-cards .card')) ?? (() => {}),
+      reveal(document.querySelectorAll<HTMLElement>('.home-recent .note-list li'), 90) ?? (() => {}),
+    );
+
+    // The tree preview loads its data only when it comes near the viewport.
+    const base = root.dataset.base!;
+    const mini = document.querySelector<HTMLCanvasElement>('.mini-canvas')!;
+    let graph: ReturnType<typeof mountGraph> | undefined;
+    let gone = false;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      fetch(`${base}graph.json`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (gone) return;
+          graph = mountGraph(mini, data, {
+            base,
+            preview: true,
+            galaxies: true,
+            intro: 'bang',
+            ambient: true,
+            drift: motionEnabled() ? 0.035 : 0,
+            systemLabels: true,
+            labelDegree: 99,
+          });
+        });
+    }, { rootMargin: '200px' });
+    io.observe(mini);
+    cleanups.push(() => { gone = true; io.disconnect(); graph?.destroy(); });
+
+    return all(...cleanups);
   });
-  // Coming back (bfcache): the fresco is as it was before the touch.
-  addEventListener('pageshow', (e) => {
-    if (!e.persisted) return;
-    entering = false;
-    hero.classList.remove('is-touching', 'is-entering');
-  });
-
-  // Stats count up as the opening sequence reaches them.
-  if (document.documentElement.classList.contains('home-intro')) {
-    document.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => countUp(el, Number(el.dataset.count), 1400, 3700));
-  }
-
-  reveal(document.querySelectorAll<HTMLElement>('.home-cards .card'));
-  reveal(document.querySelectorAll<HTMLElement>('.home-recent .note-list li'), 90);
-
-  // The tree preview loads its data only when it comes near the viewport.
-  const base = document.documentElement.dataset.base!;
-  const mini = document.querySelector<HTMLCanvasElement>('.mini-canvas')!;
-  const io = new IntersectionObserver(([e]) => {
-    if (!e.isIntersecting) return;
-    io.disconnect();
-    fetch(`${base}graph.json`)
-      .then((r) => r.json())
-      .then((data) => mountGraph(mini, data, {
-        base,
-        preview: true,
-        galaxies: true,
-        intro: 'bang',
-        ambient: true,
-        drift: motionEnabled() ? 0.035 : 0,
-        systemLabels: true,
-        labelDegree: 99,
-      }));
-  }, { rootMargin: '200px' });
-  io.observe(mini);
 </script>
