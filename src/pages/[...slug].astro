@@ -72,7 +72,7 @@ const shelfSection = note.folders.length ? sections(vault).find((s) => s.notes.i
 const shelfUrl = shelfSection && href(`library/${shelfSection.slug}?book=${encodeURIComponent(note.slug)}`);
 ---
 
-<BaseLayout title={note.title} description={note.excerpt || `${note.title} — ${note.folders.join(' / ') || 'Knowledge archive'}`}>
+<BaseLayout title={note.title} description={note.excerpt || `${note.title} — ${note.folders.join(' / ') || 'Knowledge archive'}`} scene={`note:${shelfSection?.slug ?? ''}`}>
   <div class="note-layout">
     <aside class="note-sidebar tree" aria-label="Section contents">
       {
@@ -89,7 +89,7 @@ const shelfUrl = shelfSection && href(`library/${shelfSection.slug}?book=${encod
 
     <article class="note-main">
       <header class="note-header book-plate" style={`--plate:${sectionColor(note.section)}`}>
-        {shelfUrl && <a class="return-shelf" href={shelfUrl}>← Return to shelf</a>}
+        {shelfUrl && <a class="return-shelf" href={shelfUrl}>← Return to the shelf</a>}
         <nav class="breadcrumbs" aria-label="Breadcrumb">
           {crumbs(note).map((c, i) => (
             <>
@@ -279,7 +279,7 @@ const shelfUrl = shelfSection && href(`library/${shelfSection.slug}?book=${encod
     .return-shelf {
       display: inline-block;
       margin: 0 0 10px;
-      font-family: var(--font-mono);
+      font-family: var(--font-label);
       font-size: 0.7rem;
       letter-spacing: 0.16em;
       text-transform: uppercase;

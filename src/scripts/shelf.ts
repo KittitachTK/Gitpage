@@ -1,8 +1,8 @@
 /**
- * Zero-gravity bookshelf for the Library.
+ * Floating bookshelves for the Library.
  *
- * Shelf modules float in a space-station archive bay: each note is a book on
- * a shelf (section pages), or each section is a shelf module (library hall).
+ * Walnut shelves hang in the air of the painted garden (EdenWorld.astro): each
+ * note is a book on a shelf (section pages), or each section is a shelf (library hall).
  * Every book/module is backed by a real <a href> rendered by ShelfStage.astro;
  * this script only positions those links over the 3D scene, so keyboard,
  * screen readers and "open in new tab" keep working, and without WebGL the
@@ -10,7 +10,6 @@
  */
 import * as THREE from 'three';
 import { motionEnabled, onMotionChange } from './motion';
-import { mountStarfield } from './starfield';
 
 export interface ShelfBook {
   id: string;
@@ -115,7 +114,7 @@ export class SpineAtlas {
     const x = p.x, y = p.strip * CELL_H;
     p.x += w + 2;
 
-    // Cloth: section colour sunk toward deep space, darker at the rounded edges.
+    // Cloth: section colour sunk toward the garden's shade, darker at the rounded edges.
     const cloth = base.clone().lerp(this.colors.bg, 0.22);
     const g = ctx.createLinearGradient(x, 0, x + w, 0);
     g.addColorStop(0, `#${cloth.clone().multiplyScalar(0.55).getHexString()}`);
@@ -131,12 +130,12 @@ export class SpineAtlas {
     for (const by of [34, 42, CELL_H - 128, CELL_H - 120]) ctx.fillRect(x + 4, y + by, w - 8, 2);
     ctx.globalAlpha = 1;
 
-    // Star mark at the head of the spine.
+    // Fleuron at the head of the spine.
     ctx.fillStyle = gold;
     ctx.font = `${Math.round(Math.min(w * 0.42, 20))}px ${this.fonts.display}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('✦', x + w / 2, y + 19);
+    ctx.fillText('❦', x + w / 2, y + 19);
 
     // Note type at the foot.
     const abbr = book.type ? TYPE_ABBR[book.type] ?? book.type.slice(0, 4).toUpperCase() : '';
@@ -234,7 +233,6 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   const glCanvas = stage.querySelector<HTMLCanvasElement>('canvas.shelf-gl')!;
   const overlay = stage.querySelector<HTMLElement>('.shelf-overlay')!;
   const holo = stage.querySelector<HTMLElement>('.shelf-holo');
-  const sky = stage.querySelector<HTMLCanvasElement>('canvas.shelf-sky');
   // The view around the stage: the focus area frames the shelves, the sidebar holds the list.
   const view = (stage.closest('.shelf-view') as HTMLElement | null) ?? stage;
   const focusEl = view.querySelector<HTMLElement>('.shelf-focus');
@@ -255,25 +253,23 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   renderer.toneMappingExposure = 1;
   renderer.setClearColor(0x000000, 0);
 
-  if (sky) mountStarfield(sky);
-
   const palette = readPalette(stage);
   const cs = getComputedStyle(stage);
   const fonts = {
     display: cs.getPropertyValue('--font-display').trim() || 'sans-serif',
-    mono: cs.getPropertyValue('--font-mono').trim() || 'monospace',
+    mono: cs.getPropertyValue('--font-label').trim() || 'serif',
   };
   const sectionColor = (name: string) => new THREE.Color(cs.getPropertyValue(name).trim() || '#8e939c');
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
 
-  // Light from a distant star, a cool rim from the station, and faint fill.
-  scene.add(new THREE.HemisphereLight(0x9aa6c8, 0x07090e, 0.55));
-  const star = new THREE.DirectionalLight(0xffe7c4, 1.5);
+  // Late sun through the leaves, green light bounced off the meadow, and a pale sky fill.
+  scene.add(new THREE.HemisphereLight(0xd8e6ee, 0x2c3a1e, 0.7));
+  const star = new THREE.DirectionalLight(0xffe0ae, 1.7);
   star.position.set(-4, 5, 6);
   scene.add(star);
-  const rim = new THREE.DirectionalLight(0xa8b8ff, 0.8);
+  const rim = new THREE.DirectionalLight(0xc4e0a4, 0.55);
   rim.position.set(5, 2, -5);
   scene.add(rim);
   const glow = new THREE.PointLight(palette.accent, 0, 4, 1.6);
@@ -296,8 +292,30 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     return t;
   })();
-  const boardMat = new THREE.MeshStandardMaterial({ color: 0x46506a, metalness: 0.6, roughness: 0.34 });
-  const capMat = new THREE.MeshStandardMaterial({ color: 0x2a3244, metalness: 0.8, roughness: 0.3 });
+  // Walnut shelves with gilded finials.
+  const woodTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 32;
+    const x = c.getContext('2d')!;
+    x.fillStyle = '#6b4526';
+    x.fillRect(0, 0, 512, 32);
+    for (let i = 0; i < 46; i++) {
+      const y = Math.random() * 32;
+      x.strokeStyle = Math.random() < 0.5 ? 'rgba(40,22,10,0.35)' : 'rgba(150,104,60,0.25)';
+      x.lineWidth = 0.5 + Math.random() * 1.5;
+      x.beginPath();
+      x.moveTo(0, y);
+      for (let px = 0; px <= 512; px += 32) x.lineTo(px, y + Math.sin(px / 60 + i) * 1.6);
+      x.stroke();
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.wrapS = THREE.RepeatWrapping;
+    return t;
+  })();
+  const boardMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: woodTex, metalness: 0.05, roughness: 0.62 });
+  const capMat = new THREE.MeshStandardMaterial({ color: 0xc19a4a, metalness: 0.85, roughness: 0.3 });
   const glowTex = (() => {
     const c = document.createElement('canvas');
     c.width = c.height = 128;
@@ -310,7 +328,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     x.fillRect(0, 0, 128, 128);
     return new THREE.CanvasTexture(c);
   })();
-  const disposables: { dispose(): void }[] = [pageTex, glowTex, boardMat, capMat];
+  const disposables: { dispose(): void }[] = [pageTex, glowTex, woodTex, boardMat, capMat];
 
   const atlas = new SpineAtlas(fonts, palette);
 
@@ -408,11 +426,13 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
       group.add(b.slot);
     }
     if (!list.length && data.mode === 'boards') {
-      // An empty module: a faint hologram where volumes will dock.
-      const ghost = new THREE.Mesh(
-        new THREE.BoxGeometry(w - PAD * 2, 0.7, BOOK_D * 0.8),
-        new THREE.MeshBasicMaterial({ color, wireframe: true, transparent: true, opacity: 0.18 }),
+      // An empty shelf: a faint outline where volumes will stand.
+      const box = new THREE.BoxGeometry(w - PAD * 2, 0.7, BOOK_D * 0.8);
+      const ghost = new THREE.LineSegments(
+        new THREE.EdgesGeometry(box),
+        new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.22 }),
       );
+      box.dispose();
       ghost.position.y = 0.36;
       group.add(ghost);
     }
@@ -424,7 +444,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
       for (const b of s.books) s.group.remove(b.slot);
       s.group.traverse((o) => {
         const m = o as THREE.Mesh;
-        if (m.isMesh) {
+        if (m.isMesh || (o as THREE.LineSegments).isLineSegments) {
           m.geometry.dispose();
           const mat = m.material as THREE.Material;
           if (mat !== boardMat && mat !== capMat) mat.dispose();
@@ -841,7 +861,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     x.textAlign = 'center';
     x.textBaseline = 'middle';
     x.font = `28px ${fonts.display}`;
-    x.fillText('✦', w / 2, 96);
+    x.fillText('❦', w / 2, 96);
     x.font = `500 13px ${fonts.mono}`;
     x.fillText((b.board.label || '').toUpperCase().split('').join(' '), w / 2, ch - 78);
     // Title, wrapped. Thai has no spaces between words, so break on word segments.
@@ -1131,8 +1151,8 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
   layout();
   stage.classList.add('is-ready');
 
-  // Arriving from the home station's warp (or docking from another shelf):
-  // the camera pulls back out of the bay while the modules drift into place.
+  // Descending from the Creation on the home page (or docking from another shelf):
+  // the camera pulls back while the shelves drift into place.
   const arrive = stage.dataset.arrive;
   delete stage.dataset.arrive;
   if (arrive && motionEnabled()) {

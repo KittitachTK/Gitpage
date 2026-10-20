@@ -1,12 +1,12 @@
 /**
  * Knowledge graph renderer: d3-force layout drawn on a <canvas>.
  *
- *   note          = star          (size ∝ number of connections)
- *   course folder = star system   (labelled cluster)
- *   section       = galaxy        (weak pull towards a per-section anchor)
- *   link          = connection    (light travels along it)
+ *   note          = fruit / "star" (size ∝ number of connections)
+ *   course folder = cluster        (labelled, a "star system" in the code)
+ *   section       = bough          (weak pull towards a per-section anchor; a "galaxy" in the code)
+ *   link          = branch         (light travels along it)
  *
- * Used for the full Knowledge Universe and the per-note local graph.
+ * Used for the full Tree of Knowledge and the per-note local graph.
  *
  * The layout is computed up front; what moves on screen is animation (entrance,
  * twinkle, pulses, camera, easing of highlights). That animation runs in one
@@ -320,7 +320,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
     ctx.clearRect(0, 0, width, height);
 
     // Background stars with parallax (and a slow twinkle when ambient).
-    ctx.fillStyle = '#e6e2d8';
+    ctx.fillStyle = '#ffe6a8'; // fireflies
     for (const s of stars) {
       const x = ((s.x * width + view.x * s.z) % width + width) % width;
       const y = ((s.y * height + view.y * s.z) % height + height) % height;
@@ -409,7 +409,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
       if (show > 0.01) {
         const groups = new Map<string, GNode[]>();
         for (const n of nodes) if (n.group) groups.set(n.group, [...(groups.get(n.group) ?? []), n]);
-        ctx.font = `600 10px 'JetBrains Mono', ui-monospace, monospace`;
+        ctx.font = `600 10px Cinzel, Georgia, serif`;
         ctx.textAlign = 'center';
         if ('letterSpacing' in ctx) (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = '2px';
         for (const [g, members] of groups) {
@@ -435,7 +435,7 @@ export function mountGraph(canvas: HTMLCanvasElement, data: GraphData, opts: Gra
     }
 
     // Star names: most important first; skip any that would overlap.
-    ctx.font = `${opts.focus ? 11 : 12}px Inter, 'IBM Plex Sans Thai', sans-serif`;
+    ctx.font = `500 ${opts.focus ? 13 : 14}px 'Cormorant Garamond', 'Noto Serif Thai', Georgia, serif`;
     ctx.textAlign = 'center';
     const ordered = [...nodes].sort((a, b) =>
       Number(b === hover || b.id === opts.focus) - Number(a === hover || a.id === opts.focus) || b.degree - a.degree);

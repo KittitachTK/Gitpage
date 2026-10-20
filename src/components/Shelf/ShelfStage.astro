@@ -1,8 +1,8 @@
 ---
 /**
- * The Library's zero-gravity bookshelf, full bleed: deep space fills the page,
- * a glass sidebar holds the page heading, filters and the list (always shown),
- * and src/scripts/shelf.ts frames the 3D shelves in the space beside it.
+ * The Library's floating bookshelf, full bleed over the painted garden
+ * (EdenWorld.astro): a glass sidebar holds the page heading, filters and the list (always shown),
+ * and src/scripts/shelf.ts frames the 3D shelves in the room beside it.
  * Every book / module is also a real link rendered here. Without JavaScript or
  * WebGL the sidebar simply takes the full width.
  *
@@ -24,7 +24,6 @@ const json = JSON.stringify(data).replace(/</g, '\\u003c');
 
 <div class="shelf-view space" data-view="shelf" data-mode={data.mode}>
   <section class="shelf-stage" aria-label={label} data-filter={filter}>
-    <canvas class="shelf-sky" aria-hidden="true"></canvas>
     <canvas class="shelf-gl" aria-hidden="true"></canvas>
     <div class="shelf-overlay">
       {
@@ -84,7 +83,7 @@ const json = JSON.stringify(data).replace(/</g, '\\u003c');
   for (const view of document.querySelectorAll<HTMLElement>('.shelf-view')) {
     const stage = view.querySelector<HTMLElement>('.shelf-stage')!;
 
-    // Set by the home station's warp just before it navigated here; consumed once.
+    // Set by the Creation on the home page (or another shelf) just before it navigated here; consumed once.
     try {
       const arrive = sessionStorage.getItem('planktos:arrive');
       sessionStorage.removeItem('planktos:arrive');
@@ -106,9 +105,9 @@ const json = JSON.stringify(data).replace(/</g, '\\u003c');
       // Fonts for the book spines first (or give up waiting after a moment), then Three.js.
       const data = JSON.parse(stage.querySelector('.shelf-data')!.textContent!) as ShelfData;
       const fonts = Promise.all([
-        document.fonts.load('500 32px "Space Grotesk"'),
-        document.fonts.load('500 32px "IBM Plex Sans Thai"', 'กขค'),
-        document.fonts.load('600 16px "JetBrains Mono"'),
+        document.fonts.load('500 32px "Cormorant Garamond"'),
+        document.fonts.load('500 32px "Noto Serif Thai"', 'กขค'),
+        document.fonts.load('600 16px "Cinzel"'),
       ]).catch(() => {});
       const timeout = new Promise((r) => setTimeout(r, 2000));
       Promise.all([import('../../scripts/shelf'), Promise.race([fonts, timeout])]).then(([{ mountShelf }]) => mountShelf(stage, data));

@@ -40,7 +40,7 @@ const courses = shelf.boards.map((b) => {
 });
 ---
 
-<BaseLayout title={sec.label} nav="library">
+<BaseLayout title={sec.label} nav="library" scene={`shelf:${sec.slug}`}>
   <ShelfStage data={shelf} label={`${sec.label} bookshelf`}>
     <header class="page-head" slot="head">
       <p class="eyebrow"><span class="section-dot" style={`--dot:${sec.color}`}></span>Library · {sec.notes.length} notes</p>
@@ -131,12 +131,12 @@ const courses = shelf.boards.map((b) => {
 <style>
   .filters { display: grid; gap: 8px; margin: 0 0 18px; }
   .type-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .filter-label { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); min-width: 4.5em; }
+  .filter-label { font-family: var(--font-label); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-faint); min-width: 4.5em; }
   .course-filter .type-chip { text-transform: none; }
   .chip-code { color: var(--text-faint); margin-right: 5px; }
   .type-chip[aria-pressed='true'] .chip-code { color: inherit; opacity: 0.75; }
   .type-chip {
-    font: inherit; font-family: var(--font-mono); font-size: 0.72rem; text-transform: capitalize; cursor: pointer;
+    font: inherit; font-family: var(--font-label); font-size: 0.72rem; text-transform: capitalize; cursor: pointer;
     color: var(--text-muted); background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 11px;
     transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
   }
@@ -146,7 +146,7 @@ const courses = shelf.boards.map((b) => {
   .side-group + .side-group { margin-top: 18px; }
   .side-group-title {
     display: flex; align-items: center; gap: 8px; margin: 0 0 4px;
-    font-family: var(--font-mono); font-weight: 400; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted);
+    font-family: var(--font-label); font-weight: 400; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted);
   }
   .side-group-title small { color: var(--text-faint); letter-spacing: 0.06em; }
   .by-type :global(.note-list a) { padding: 10px 6px; border-radius: var(--radius-sm); }

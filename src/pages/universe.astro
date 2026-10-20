@@ -8,14 +8,14 @@ const vault = getVault();
 const secs = sections(vault).filter((s) => s.notes.length);
 ---
 
-<BaseLayout title="Knowledge Universe" nav="universe" description="Every note as a star, every link as a connection.">
+<BaseLayout title="Tree of Knowledge" nav="universe" description="Every note a fruit, every link a branch: the tree of knowledge in the garden at night.">
   <section class="universe space">
     <canvas class="universe-canvas" aria-label="Interactive graph of all notes and their links"></canvas>
-    <OrbitLoader class="u-loading" label="Charting the universe" />
+    <OrbitLoader class="u-loading" label="Gathering the fruit" />
 
     <div class="universe-ui panel">
-      <p class="eyebrow">Knowledge universe</p>
-      <p class="u-stats">{vault.notes.length} stars · {vault.graph.links.length} connections</p>
+      <p class="eyebrow">Tree of knowledge</p>
+      <p class="u-stats">{vault.notes.length} fruits · {vault.graph.links.length} branches</p>
       <label class="sr-only" for="u-filter">Highlight notes</label>
       <input id="u-filter" class="u-filter" type="search" placeholder="Highlight… (title or tag)" autocomplete="off" />
       <ul class="legend">
@@ -28,17 +28,17 @@ const secs = sections(vault).filter((s) => s.notes.length);
           ))
         }
       </ul>
-      <p class="u-hint">Drag to pan · scroll or pinch to zoom · click a star to open it</p>
+      <p class="u-hint">Drag to wander · scroll or pinch to draw near · pick a fruit to open it</p>
       <p class="u-hover" aria-live="polite"></p>
     </div>
   </section>
 </BaseLayout>
 
 <style>
-  .universe { position: relative; height: calc(100dvh - var(--header-h)); background: radial-gradient(ellipse at 50% 45%, #0e121a 0%, var(--bg) 70%); }
+  .universe { position: relative; height: calc(100dvh - var(--header-h)); /* the garden at night shows through (EdenWorld) */ background: radial-gradient(ellipse at 50% 50%, rgb(4 6 4 / 0.15), rgb(4 6 4 / 0.55) 80%); }
   .universe-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
   .universe-ui { position: absolute; top: 16px; left: 16px; width: 260px; padding: 16px 18px; background: color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter: blur(8px); font-size: 0.85rem; }
-  .u-stats { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); margin: 6px 0 12px; }
+  .u-stats { font-family: var(--font-label); font-size: 0.78rem; color: var(--text-muted); margin: 6px 0 12px; }
   .u-filter { width: 100%; background: var(--bg); border: 1px solid var(--border-strong); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; font: inherit; }
   .legend { list-style: none; padding: 0; margin: 14px 0 8px; display: grid; gap: 4px; color: var(--text-muted); }
   .u-hint { color: var(--text-faint); font-size: 0.75rem; margin: 10px 0 0; }
@@ -70,7 +70,6 @@ const secs = sections(vault).filter((s) => s.notes.length);
       setTimeout(() => (loading.hidden = true), 600);
       const graph = mountGraph(canvas, data, {
         base,
-        starfield: true,
         galaxies: true,
         labelDegree: 4,
         intro: 'bang',
@@ -85,7 +84,7 @@ const secs = sections(vault).filter((s) => s.notes.length);
         clearTimeout(timer);
         timer = window.setTimeout(() => {
           const n = graph.setFilter(input.value);
-          stats.textContent = input.value.trim() ? `${n} matching stars` : total;
+          stats.textContent = input.value.trim() ? `${n} matching fruits` : total;
         }, 160);
       });
     });

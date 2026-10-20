@@ -1,20 +1,27 @@
 ---
 import '../styles/global.css';
+import EdenWorld from '../components/EdenWorld.astro';
 import { BASE, SITE, href } from '../lib/config';
 import { getVault } from '../lib/vault/vault';
+import { poseAttr, scenePose } from '../lib/world';
 
 interface Props {
   title?: string;
   description?: string;
   /** Which top-level nav item is current. */
   nav?: 'home' | 'universe' | 'library' | 'research' | 'ideas' | 'tags' | 'about' | 'search';
+  /** Where this page stands in the painted garden (lib/world.ts). Defaults from `nav`. */
+  scene?: string;
 }
 
 const { title, nav } = Astro.props;
+const sceneByNav: Record<string, string> = { home: 'home', library: 'garden', universe: 'tree', research: 'research', ideas: 'ideas' };
+const scene = Astro.props.scene ?? sceneByNav[nav ?? ''] ?? 'meadow';
+const pose = poseAttr(scenePose(scene));
 const description = Astro.props.description || SITE.description;
 const pageTitle = title ? `${title} — ${SITE.name}` : `${SITE.name} · ${SITE.subtitle}`;
 const links: { key: Props['nav']; label: string; url: string }[] = [
-  { key: 'universe', label: 'Universe', url: href('universe') },
+  { key: 'universe', label: 'Tree of Knowledge', url: href('universe') },
   { key: 'library', label: 'Library', url: href('library') },
   { key: 'research', label: 'Research', url: href('research') },
   { key: 'ideas', label: 'Ideas', url: href('ideas') },
@@ -25,13 +32,13 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
 ---
 
 <!doctype html>
-<html lang="en" data-base={BASE}>
+<html lang="en" data-base={BASE} data-scene={scene} data-pose={pose}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#07090e" />
+    <meta name="theme-color" content="#12140f" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <link rel="icon" href={href('favicon.svg')} type="image/svg+xml" />
@@ -39,7 +46,7 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Noto+Serif+Thai:wght@500;600&display=swap"
     />
     <!-- Opt in to cross-document view transitions as early as possible (see global.css). -->
     <style is:inline>@view-transition { navigation: auto; }</style>
@@ -57,7 +64,7 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
           // Dark is the default; the header toggle can switch to the light theme.
           if (localStorage.getItem('planktos:theme') === 'light') {
             root.dataset.theme = 'light';
-            document.querySelector('meta[name="theme-color"]').content = '#f5f2ea';
+            document.querySelector('meta[name="theme-color"]').content = '#f3ecdc';
           }
         } catch {}
         const motionOk = () =>
@@ -67,6 +74,28 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
           const x = new URL(u, location.href);
           return x.origin + x.pathname.replace(/\/?$/, '/');
         };
+
+        // ---- the painted world (lib/world.ts, components/EdenWorld.astro) ----
+        // Paint the first frame where the previous page left the camera, then
+        // EdenWorld glides to this page's pose. Poses are "x,y,z,veil,night,light".
+        const VARS = ['--wx', '--wy', '--wz', '--wv', '--wn', '--wl'];
+        const target = root.dataset.pose;
+        const apply = (p) => p.split(',').forEach((v, i) => root.style.setProperty(VARS[i], v));
+        let from = null, leave = target;
+        try { from = sessionStorage.getItem('planktos:pose'); } catch {}
+        if (from && motionOk()) {
+          apply(from);
+          // Arriving in the light of the Creation: a long descent from the sky.
+          if (+from.split(',')[5] > 0.5) root.dataset.descent = '';
+        } else apply(target);
+        window.planktosWorld = {
+          go: () => apply(target),
+          leaveFrom: (p) => { leave = p; },
+        };
+        const remember = () => { try { sessionStorage.setItem('planktos:pose', leave); } catch {} };
+        addEventListener('pagehide', remember);
+        addEventListener('pageswap', remember);
+
         // The element that represents page `url` here: a list item / card title linking to it.
         const titleLinkingTo = (url) => {
           const target = norm(url);
@@ -118,7 +147,7 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
     <a class="sr-only" href="#main">Skip to content</a>
     <header class="site-header">
       <div class="container">
-        <a class="brand" href={href('')}><span class="star">✦</span>{SITE.name}<small>{SITE.subtitle}</small></a>
+        <a class="brand" href={href('')}><span class="star">❦</span>{SITE.name}<small>{SITE.subtitle}</small></a>
         <nav class="nav" aria-label="Main">
           {links.map((l) => <a href={l.url} aria-current={nav === l.key ? 'page' : undefined}>{l.label}</a>)}
         </nav>
@@ -142,6 +171,8 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
       </div>
     </header>
 
+    <EdenWorld />
+
     <main id="main">
       <slot />
     </main>
@@ -156,6 +187,7 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
       <div class="container">
         <span>✦ {SITE.name} — {SITE.tagline}</span>
         <span>Written in Obsidian · versioned with Git · built with Astro</span>
+        <span class="credits">Paintings: Michelangelo, <i>The Creation of Adam</i> (c. 1512) · Thomas Cole, <i>The Garden of Eden</i> (1828) — public domain</span>
       </div>
     </footer>
 
@@ -184,7 +216,7 @@ const links: { key: Props['nav']; label: string; url: string }[] = [
         const light = root.dataset.theme !== 'light';
         if (light) root.dataset.theme = 'light';
         else delete root.dataset.theme;
-        document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')!.content = light ? '#f5f2ea' : '#07090e';
+        document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')!.content = light ? '#f3ecdc' : '#12140f';
         try { localStorage.setItem('planktos:theme', light ? 'light' : 'dark'); } catch {}
         syncThemeBtn();
         // Canvas graphs and diagrams re-read their colours.

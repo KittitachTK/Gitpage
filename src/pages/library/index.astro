@@ -10,7 +10,7 @@ import type { ShelfData } from '../../scripts/shelf';
 const vault = getVault();
 const secs = sections(vault);
 
-// The archive hall: one floating shelf module per section, stocked with its most recent volumes.
+// The garden library: one floating shelf per section, stocked with its most recent volumes.
 const hall: ShelfData = {
   mode: 'boards',
   boards: secs.map((s) => ({
@@ -28,9 +28,9 @@ const hall: ShelfData = {
 <BaseLayout title="Library" nav="library">
   <ShelfStage data={hall} label="Library shelf modules">
     <header class="page-head" slot="head">
-      <p class="eyebrow">Knowledge library · archive bay</p>
+      <p class="eyebrow">The garden library</p>
       <h1>Library</h1>
-      <p>Every note in the archive, shelved by field. Pick a shelf module to dock with it, or wander the <a href={href('universe')}>Knowledge Universe</a>.</p>
+      <p>Every note in the archive, shelved by field among the trees of the garden. Pick a shelf to walk to it, or visit the <a href={href('universe')}>Tree of Knowledge</a>.</p>
       <form action={href('search')} method="get" role="search" style="margin-top:18px">
         <input class="big-search" name="q" type="search" placeholder="Search the archive…" aria-label="Search the archive" />
       </form>
@@ -62,6 +62,6 @@ const hall: ShelfData = {
   .hall-item h3 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 1.05rem; }
   .hall-item p { margin: 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
   .hall-item[data-empty] { opacity: 0.6; }
-  .hall-count { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
+  .hall-count { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-label); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
   .hall-count .section-dot { box-shadow: 0 0 8px var(--dot); }
 </style>
