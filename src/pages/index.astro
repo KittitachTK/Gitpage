@@ -343,25 +343,34 @@ const art = (f: string) => href(`art/${f}`);
     // ---- 3D: the spark follows the gap between the fingers; the fresco fades as you scroll ----
     let raf = 0;
     let introPlayed = false;
+    let placed = ''; // last written position: styles are only touched when it changes
     const track = () => {
       raf = requestAnimationFrame(track);
       const w = world3d();
       const g = w?.gapScreen();
       if (!w || !g) {
-        spark.style.removeProperty('--sx');
-        flare.style.removeProperty('--sx');
+        if (placed) {
+          placed = '';
+          spark.style.removeProperty('--sx');
+          flare.style.removeProperty('--sx');
+        }
         return;
       }
       if (intro && !introPlayed) { introPlayed = true; w.intro(); }
       const h = hero.getBoundingClientRect();
+      w.setExtraVeil(Math.min(1, Math.max(0, (scrollY - h.height * 0.2) / (h.height * 0.6))) * 0.9);
+      if (h.bottom < 0) return; // scrolled past the hero
+      const sx = Math.round((g.x - h.left) * 2) / 2, sy = Math.round((g.y - h.top) * 2) / 2;
+      const key = `${sx},${sy},${h.width}`;
+      if (key === placed) return;
+      placed = key;
       // Keep the label on screen when the gap sits near an edge (phones).
       const half = label.offsetWidth / 2 + 12;
-      label.style.setProperty('--lx', `${Math.max(0, half - (g.x - h.left)) - Math.max(0, g.x - h.left + half - h.width)}px`);
+      label.style.setProperty('--lx', `${Math.max(0, half - sx) - Math.max(0, sx + half - h.width)}px`);
       for (const el of [spark, flare]) {
-        el.style.setProperty('--sx', `${g.x - h.left}px`);
-        el.style.setProperty('--sy', `${g.y - h.top}px`);
+        el.style.setProperty('--sx', `${sx}px`);
+        el.style.setProperty('--sy', `${sy}px`);
       }
-      w.setExtraVeil(Math.min(1, Math.max(0, (scrollY - h.height * 0.2) / (h.height * 0.6))) * 0.9);
     };
     raf = requestAnimationFrame(track);
     cleanups.push(() => { cancelAnimationFrame(raf); world3d()?.setExtraVeil(0); });

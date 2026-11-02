@@ -25,6 +25,12 @@ export function mountPollen(canvas: HTMLCanvasElement, opts: PollenOptions = {})
   const color = opts.color ?? '255,226,150';
   let w = 0, h = 0, t = 0;
   let motes: Mote[] = [];
+  // The callbacks may read computed styles, so they are read once per drawn frame, not per tick.
+  let night = 0, alpha = 1, blank = false;
+  const read = () => {
+    alpha = opts.alpha?.() ?? 1;
+    night = alpha > 0.01 ? opts.night?.() ?? 0 : night;
+  };
 
   const spawn = (anywhere: boolean): Mote => {
     let x = Math.random(), y = Math.random();
@@ -73,10 +79,14 @@ export function mountPollen(canvas: HTMLCanvasElement, opts: PollenOptions = {})
   }
 
   function draw() {
+    read();
+    if (alpha <= 0.01) {
+      if (!blank) ctx.clearRect(0, 0, w, h);
+      blank = true;
+      return;
+    }
+    blank = false;
     ctx.clearRect(0, 0, w, h);
-    const night = opts.night?.() ?? 0;
-    const alpha = opts.alpha?.() ?? 1;
-    if (alpha <= 0.01) return;
     for (const m of motes) {
       // Pollen glints softly; fireflies blink on and off.
       const glint = 0.55 + 0.45 * Math.sin(t * m.sp * 1.6 + m.ph);
@@ -96,9 +106,14 @@ export function mountPollen(canvas: HTMLCanvasElement, opts: PollenOptions = {})
 
   let since = 0;
   const stop = animateWhileVisible(canvas, (_, dt) => {
+    since += dt;
+    // Hidden (e.g. the 3D world is shown instead): only check now and then whether that changed.
+    if (alpha <= 0.01) {
+      if (since >= 250) { since = 0; draw(); }
+      return;
+    }
     const s = dt / 1000;
     t += s;
-    const night = opts.night?.() ?? 0;
     for (let i = 0; i < motes.length; i++) {
       const m = motes[i];
       // Fireflies wander; pollen rises on warm air with a slow sway.
@@ -107,7 +122,6 @@ export function mountPollen(canvas: HTMLCanvasElement, opts: PollenOptions = {})
       m.y += m.vy * s * (1 - night * 0.8) + Math.cos(t * 0.5 * m.sp + m.ph) * 0.003 * night * s;
       if (m.y < -0.04 || m.x < -0.04 || m.x > 1.04 || m.y > 1.06) motes[i] = spawn(false);
     }
-    since += dt;
     if (since < 33) return; // ~30 fps is plenty for drifting motes
     since = 0;
     draw();

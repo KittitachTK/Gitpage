@@ -278,7 +278,11 @@ export function buildDiorama(renderer: THREE.WebGLRenderer, base: string, meta: 
       night.value = s.night;
       pMat.uniforms.uTime.value = time;
       pMat.uniforms.uScale.value = s.pixelScale;
-      for (const c of clouds) c.material.opacity = Math.min(1, s.light * 1.4) * 0.9;
+      const cloud = Math.min(1, s.light * 1.4) * 0.9;
+      for (const c of clouds) {
+        c.material.opacity = cloud;
+        c.visible = cloud > 0.005; // sixteen large transparent sprites: skip them when unseen
+      }
     },
     dispose() {
       disposables.forEach((d) => d.dispose());

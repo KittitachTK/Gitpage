@@ -149,6 +149,7 @@ import { href } from '../lib/config';
     set2d(pose);
     if (!want3d()) {
       el.dataset.mode = '2d';
+      world?.setRunning(false);
       root.classList.remove('world-pending');
       return;
     }
@@ -161,12 +162,14 @@ import { href } from '../lib/config';
       return;
     }
     const { name, pose: p3 } = worldScene(scene);
+    w.setRunning(true);
     w.refresh();
     try {
       await w.show(name, p3);
     } catch (err) {
       console.warn('3D world could not load its paintings', err);
       el.dataset.mode = '2d';
+      w.setRunning(false);
       return;
     } finally {
       clearTimeout(slow);

@@ -8,6 +8,9 @@
  *
  * 2. Accessible names. Each equation SVG has role="img"; give it its TeX source
  *    as aria-label so screen readers announce something meaningful.
+ *
+ * 3. Lighter markup. Every <g> carries data-mml-node, but MathJax's stylesheet only
+ *    looks at a few of them; dropping the rest takes ~15% off math-heavy notes.
  */
 import type { Element, ElementContent, Root } from 'hast';
 import { toText } from 'hast-util-to-text';
@@ -34,6 +37,8 @@ export function rehypeCollectTex() {
 }
 
 const GLYPH_ID = /^MJX-\d+-/;
+/** Nodes MathJax's SVG stylesheet selects by data-mml-node. */
+const STYLED_NODES = new Set(['merror', 'mtable', 'maction']);
 const shared = (id: string) => id.replace(GLYPH_ID, 'mjxg-');
 
 /** After MathJax: label equations and hoist glyph definitions. */
@@ -59,6 +64,11 @@ export function rehypeMathjaxSvg() {
         }
         parent.children.splice(index, 1);
         return [SKIP, index];
+      }
+      if (el.tagName === 'g') {
+        const node = el.properties.dataMmlNode;
+        if (node !== undefined && !STYLED_NODES.has(String(node))) delete el.properties.dataMmlNode;
+        return;
       }
       if (el.tagName === 'use') {
         for (const key of ['xLinkHref', 'href'] as const) {

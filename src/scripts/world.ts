@@ -29,6 +29,8 @@ export interface World {
   setExtraVeil(v: number): void;
   /** Re-read theme colours. */
   refresh(): void;
+  /** Start or stop rendering (stopped while the 2D backdrop is shown). */
+  setRunning(on: boolean): void;
   /** Home: Adam and God drift together out of the light. */
   intro(): void;
   /** Home: the fingers meet and the camera flies into the light between them; `done` when it is white. */
@@ -42,8 +44,10 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 
 export function createWorld(canvas: HTMLCanvasElement, artBase: string): World {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+  // No MSAA: the layers are soft paintings with alpha edges, which it would not smooth anyway,
+  // and every frame redraws several full-screen layers, so fill rate is what costs.
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.25));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(0xfbf3df); // heaven's light above the painted sky
   renderer.autoClear = false;
@@ -90,14 +94,14 @@ export function createWorld(canvas: HTMLCanvasElement, artBase: string): World {
     return m;
   };
   const wash = { color: { value: new THREE.Color() }, amount: { value: 0 } };
-  quad(/* glsl */ `
+  const washQuad = quad(/* glsl */ `
     uniform vec3 color; uniform float amount; varying vec2 vP;
     void main() {
       gl_FragColor = vec4(color, amount);
       #include <colorspace_fragment>
     }`, wash);
   const light = { value: 0 };
-  quad(/* glsl */ `
+  const lightQuad = quad(/* glsl */ `
     uniform float uLight; varying vec2 vP;
     void main() {
       vec3 c = mix(vec3(1.0, 0.99, 0.96), vec3(0.95, 0.87, 0.68), length(vP) * 0.5);
@@ -249,12 +253,14 @@ export function createWorld(canvas: HTMLCanvasElement, artBase: string): World {
   const clock = new THREE.Clock();
   const offset = new THREE.Vector3();
   let lastDraw = 0;
+  let raf = 0;
+  let running = true;
   function frame(now: number) {
-    requestAnimationFrame(frame);
+    raf = requestAnimationFrame(frame);
     if (document.hidden) return;
     const busy = !!flight || introT >= 0 || touchT >= 0;
-    // Idle scenes only drift: 30 fps is plenty.
-    if (!busy && now - lastDraw < 32) return;
+    // Idle scenes only drift: 30 fps is plenty, and under a heavy wash (reading pages) 20.
+    if (!busy && now - lastDraw < (wash.amount.value > 0.7 ? 48 : 32)) return;
     lastDraw = now;
     const dt = Math.min(clock.getDelta(), 0.05);
 
@@ -294,16 +300,33 @@ export function createWorld(canvas: HTMLCanvasElement, artBase: string): World {
     active.update(now / 1000, { light: cur.light, night: cur.night, pixelScale: canvas.clientHeight * renderer.getPixelRatio() * 0.012 });
     wash.amount.value = 1 - (1 - cur.veil) * (1 - extraVeil);
     light.value = cur.light * cur.light; // the veil lifts quickly, the clouds linger
+    washQuad.visible = wash.amount.value > 0.002;
+    lightQuad.visible = light.value > 0.002;
     renderer.clear();
-    renderer.render(active.scene, camera);
+    // Nothing of the painting shows through a full wash or full light.
+    if (wash.amount.value < 0.998 && light.value < 0.998) renderer.render(active.scene, camera);
     renderer.render(overlay, ortho);
   }
-  requestAnimationFrame(frame);
+  raf = requestAnimationFrame(frame);
+
+  const setRunning = (on: boolean) => {
+    if (on === running) return;
+    running = on;
+    if (on) {
+      clock.getDelta(); // don't count the pause as one long frame
+      lastDraw = 0;
+      raf = requestAnimationFrame(frame);
+    } else {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+  };
 
   return {
     show,
     setExtraVeil: (v) => (extraVeil = THREE.MathUtils.clamp(v, 0, 1)),
     refresh,
+    setRunning,
     intro,
     touch,
     gapScreen,

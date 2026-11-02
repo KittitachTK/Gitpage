@@ -248,7 +248,7 @@ export function mountShelf(stage: HTMLElement, data: ShelfData) {
     stage.dispatchEvent(new CustomEvent('shelf-fallback', { bubbles: true }));
     return;
   }
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1;
